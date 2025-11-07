@@ -31,88 +31,90 @@ export default function Home() {
   ];
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome back! Here's an overview of your workspace.
-          </p>
-        </div>
+    <>
+      <AppLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Welcome back! Here's an overview of your workspace.
+            </p>
+          </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {stats.map((stat) => (
+              <Card key={stat.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {stat.title}
+                  </CardTitle>
+                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stat.change}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="col-span-4">
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>
+                  Your most recent activities and updates
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.change}
-                </p>
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((item) => (
+                    <div key={item} className="flex items-center gap-4">
+                      <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-xs font-medium">{item}</span>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          Activity Item {item}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Description of the activity that occurred
+                        </p>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {item}h ago
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>
-                Your most recent activities and updates
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((item) => (
-                  <div key={item} className="flex items-center gap-4">
-                    <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
-                      <span className="text-xs font-medium">{item}</span>
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        Activity Item {item}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Description of the activity that occurred
-                      </p>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {item}h ago
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-3">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>
-                Frequently used actions and shortcuts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {['Create New Project', 'Invite Team Member', 'Generate Report', 'View Analytics', 'Manage Settings'].map((action) => (
-                  <button
-                    key={action}
-                    className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-accent transition-colors"
-                  >
-                    <span className="text-sm font-medium">{action}</span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>
+                  Frequently used actions and shortcuts
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {['Create New Project', 'Invite Team Member', 'Generate Report', 'View Analytics', 'Manage Settings'].map((action) => (
+                    <button
+                      key={action}
+                      className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-accent transition-colors"
+                    >
+                      <span className="text-sm font-medium">{action}</span>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
-    </AppLayout>
+      </AppLayout>
+    </>
   );
 }

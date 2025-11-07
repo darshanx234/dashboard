@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuthStore } from '@/lib/store/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const login = useAuthStore((state) => state.login);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,11 +25,11 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      await login(email, password);
+      // Use Next.js router instead of window.location.href
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
-    } finally {
       setLoading(false);
     }
   };

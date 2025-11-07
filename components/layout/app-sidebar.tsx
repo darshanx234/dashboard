@@ -34,7 +34,7 @@ export function AppSidebar({ isOpen, onToggle }: SidebarProps) {
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">A</span>
               </div>
-              <span className="font-semibold text-lg">AppName</span>
+              <span className="font-semibold text-lg">PhotoAlumnus</span>
             </div>
             <Button
               variant="ghost"
