@@ -9,7 +9,7 @@ interface User {
   phone?: string;
   bio?: string;
   avatar?: string;
-  role?: string;
+  role?: 'photographer' | 'client' | 'admin';
   isVerified?: boolean;
   createdAt?: string;
   updatedAt?: string;

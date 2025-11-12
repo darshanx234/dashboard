@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const authRoutes = ['/login', '/signup'];
   const isAuthRoute = authRoutes.some(route => path.startsWith(route));
 
-  // API routes (skip middleware)
+  // API routes (skip middleware) 
   if (path.startsWith('/api/')) {
     return NextResponse.next();
   }

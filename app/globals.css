@@ -80,3 +80,65 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Masonry Gallery Improvements */
+@layer utilities {
+  .masonry-gallery {
+    column-gap: 0.75rem;
+  }
+  
+  .masonry-gallery > * {
+    margin-bottom: 0.75rem;
+    break-inside: avoid;
+  }
+}
+
+/* LightGallery Custom Styles */
+.lg-backdrop {
+  background-color: rgba(0, 0, 0, 0.95) !important;
+}
+
+.lg-outer .lg-thumb-outer {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.lg-outer .lg-thumb-item {
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+.lg-outer .lg-thumb-item.active,
+.lg-outer .lg-thumb-item:hover {
+  border-color: hsl(var(--primary)) !important;
+}
+
+.lg-toolbar,
+.lg-actions .lg-next,
+.lg-actions .lg-prev,
+.lg-sub-html {
+  background-color: transparent !important;
+}
+
+/* Better image loading */
+.lg-outer .lg-image {
+  transition: opacity 0.3s ease-in-out !important;
+}
+
+/* Smooth masonry transitions */
+@media (min-width: 640px) {
+  .masonry-gallery {
+    column-count: 2;
+  }
+}
+
+@media (min-width: 768px) {
+  .masonry-gallery {
+    column-count: 3;
+  }
+}
+
+@media (min-width: 1024px) {
+  .masonry-gallery {
+    column-count: 4;
+  }
+}

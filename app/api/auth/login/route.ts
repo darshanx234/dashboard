@@ -35,10 +35,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate token
+    // Generate token with role
     const token = generateToken({
       userId: user._id.toString(),
       email: user.email,
+      role: user.role,
     });
 
     // Create response with token in httpOnly cookie
@@ -48,6 +49,15 @@ export async function POST(request: NextRequest) {
         user: {
           id: user._id,
           email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          bio: user.bio,
+          avatar: user.avatar,
+          role: user.role,
+          isVerified: user.isVerified,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
         },
         token,
       },

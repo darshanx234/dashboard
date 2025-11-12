@@ -9,7 +9,7 @@ export interface IUser extends Document {
   avatar?: string;
   phone?: string;
   bio?: string;
-  role: 'user' | 'admin';
+  role: 'photographer' | 'client' | 'admin';
   isVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -52,8 +52,8 @@ const userSchema = new Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
-    default: 'user',
+    enum: ['photographer', 'client', 'admin'],
+    default: 'photographer',
   },
   isVerified: {
     type: Boolean,

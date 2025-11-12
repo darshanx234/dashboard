@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth';
+import { getDefaultHomePage } from '@/lib/role-access';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,8 +27,12 @@ export function LoginForm() {
 
     try {
       await login(email, password);
-      // Use Next.js router instead of window.location.href
-      router.push('/');
+      
+      // Get the user role and redirect to appropriate home page
+      const user = useAuthStore.getState().user;
+      const homePage = getDefaultHomePage(user?.role || 'photographer');
+      
+      router.push(homePage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
       setLoading(false);

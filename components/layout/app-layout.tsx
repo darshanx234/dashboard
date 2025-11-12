@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { AppSidebar } from './app-sidebar';
 import { AppHeader } from './app-header';
+import { RoleProtection } from './role-protection';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store/auth';
 
@@ -17,18 +18,18 @@ export function AppLayout({ children }: AppLayoutProps) {
   const loading = useAuthStore((state) => state.loading);
 
   const toggleSidebar = () => {
-    setSidebarOpen((prev) => { console.log("hello"); return !prev});
+    setSidebarOpen((prev) => !prev);
   };
 
-  // Initialize auth on mount
+  // Initialize auth on mount - runs only once
   React.useEffect(() => {
-    console.log("call twise")
     const initAuth = async () => {
       await checkAuth();
       setHasInitialized(true);
     };
     initAuth();
-  }, [checkAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures this runs only once
 
   
 
@@ -42,19 +43,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppSidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
+    <RoleProtection>
+      <div className="min-h-screen bg-background">
+        <AppSidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
 
-      <div className={cn(
-        'transition-all duration-300 ease-in-out',
-        'lg:pl-64'
-      )}>
-        <AppHeader onToggleSidebar={toggleSidebar} />
+        <div className={cn(
+          'transition-all duration-300 ease-in-out',
+          'lg:pl-64'
+        )}>
+          <AppHeader onToggleSidebar={toggleSidebar} />
 
-        <main className="p-4 lg:p-6">
-          {children}
-        </main>
+          <main className="p-4 lg:p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </RoleProtection>
   );
 }
