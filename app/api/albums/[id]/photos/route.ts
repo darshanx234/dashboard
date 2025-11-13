@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 import Album from '@/lib/models/Album';
 import Photo from '@/lib/models/Photo';
-import { generatePresignedDownloadUrl } from '@/lib/s3';
+import { generatePresignedDownloadUrl, deleteFromS3 } from '@/lib/s3';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -144,31 +144,103 @@ export async function POST(
       $inc: { totalPhotos: 1 },
     });
 
-    // Generate presigned URL for immediate access
-    let photoWithUrl;
-    try {
-      const signedUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600); // 1 hour expiry
-      photoWithUrl = {
-        ...photo.toObject(),
-        url: signedUrl,
-        thumbnailUrl: signedUrl,
-      };
-    } catch (error) {
-      console.error('Failed to generate presigned URL:', error);
-      // Fallback to S3 URL if presigned URL generation fails
-      photoWithUrl = {
-        ...photo.toObject(),
-        url: photo.s3Url,
-        thumbnailUrl: photo.s3Url,
-      };
+    // Set cover photo if this is the first photo
+    if (!album.coverPhoto) {
+      await Album.findByIdAndUpdate(params.id, {
+        coverPhoto: body.s3Url,
+      });
     }
 
     return NextResponse.json({
       message: 'Photo added successfully',
-      photo: photoWithUrl,
+      photo,
     }, { status: 201 });
   } catch (error: any) {
     console.error('Add Photo Error:', error);
     return NextResponse.json({ error: 'Failed to add photo' }, { status: 500 });
+  }
+}
+
+// DELETE /api/albums/[id]/photos - Delete multiple photos
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const token = request.cookies.get('token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const body = await request.json();
+    const { photoIds } = body;
+
+    if (!photoIds || !Array.isArray(photoIds) || photoIds.length === 0) {
+      return NextResponse.json({ error: 'Photo IDs are required' }, { status: 400 });
+    }
+
+    await connectDB();
+
+    // Check album access
+    const album = await Album.findById(params.id);
+    if (!album) {
+      return NextResponse.json({ error: 'Album not found' }, { status: 404 });
+    }
+
+    const isOwner = album.photographerId.toString() === decoded.userId;
+    if (!isOwner) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Get photos to delete
+    const photos = await Photo.find({
+      _id: { $in: photoIds },
+      albumId: params.id,
+    });
+
+    if (photos.length === 0) {
+      return NextResponse.json({ error: 'No photos found' }, { status: 404 });
+    }
+
+    // Delete from S3
+    const deletePromises = photos.map(async (photo) => {
+      try {
+        await deleteFromS3(photo.s3Key);
+      } catch (error) {
+        console.error(`Failed to delete photo ${photo._id} from S3:`, error);
+        // Continue even if S3 deletion fails
+      }
+    });
+
+    await Promise.all(deletePromises);
+
+    // Delete from database
+    await Photo.deleteMany({
+      _id: { $in: photoIds },
+      albumId: params.id,
+    });
+
+    // Update album photo count
+    await Album.findByIdAndUpdate(params.id, {
+      $inc: { totalPhotos: -photos.length },
+    });
+
+    // If deleted photo was the cover photo, clear it
+    const deletedS3Urls = photos.map(p => p.s3Url);
+    if (album.coverPhoto && deletedS3Urls.includes(album.coverPhoto)) {
+      await Album.findByIdAndUpdate(params.id, {
+        coverPhoto: null,
+      });
+    }
+
+    return NextResponse.json({
+      message: `Successfully deleted ${photos.length} photo${photos.length > 1 ? 's' : ''}`,
+      deletedCount: photos.length,
+    });
+  } catch (error: any) {
+    console.error('Delete Photos Error:', error);
+    return NextResponse.json({ error: 'Failed to delete photos' }, { status: 500 });
   }
 }

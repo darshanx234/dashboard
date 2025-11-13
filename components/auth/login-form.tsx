@@ -17,7 +17,7 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const login = useAuthStore((state) => state.login);
+  const loginWithVerification = useAuthStore((state) => state.loginWithVerification);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,15 +26,33 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      
-      // Get the user role and redirect to appropriate home page
-      const user = useAuthStore.getState().user;
-      const homePage = getDefaultHomePage(user?.role || 'photographer');
-      
+      const result = await loginWithVerification(email, password);
+
+      if (result.requiresVerification) {
+        // Redirect to OTP verification page
+        const params = new URLSearchParams({
+          email: result.email || email,
+          purpose: 'email-verification',
+          redirect: '/',
+        });
+        if (result.otpExpiresAt) {
+          params.append('expiresAt', result.otpExpiresAt);
+        }
+        router.push(`/verify-otp?${params.toString()}`);
+        return;
+      }
+
+      if (!result.success) {
+        setError(result.error || 'Login failed');
+        return;
+      }
+
+      // Login successful
+      const homePage = getDefaultHomePage(result.user?.role || 'photographer');
       router.push(homePage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
+    } finally {
       setLoading(false);
     }
   };

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic' , 'image/avif'];
     if (!allowedTypes.includes(mimeType)) {
       return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
     }

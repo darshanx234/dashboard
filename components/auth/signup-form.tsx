@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth';
-import { getDefaultHomePage } from '@/lib/role-access';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,15 +40,43 @@ export function SignupForm() {
     }
 
     try {
-      await signup(email, password);
+      // Call signup API directly to get OTP expiry time
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to sign up');
+      }
+
+      const data = await response.json();
+
+      // Store user in auth store
+      useAuthStore.setState({
+        user: data.user,
+        token: data.token,
+      });
+
       setSuccess(true);
+
+      // Redirect to OTP verification page after 1.5 seconds
       setTimeout(() => {
-        // Get the user role and redirect to appropriate home page
-        const user = useAuthStore.getState().user;
-        const homePage = getDefaultHomePage(user?.role || 'photographer');
-        
-        router.push(homePage);
-      }, 2000);
+        const params = new URLSearchParams({
+          email: email,
+          purpose: 'signup',
+          redirect: '/',
+        });
+
+        if (data.otpExpiresAt) {
+          params.append('expiresAt', data.otpExpiresAt);
+        }
+
+        router.push(`/verify-otp?${params.toString()}`);
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');
     } finally {

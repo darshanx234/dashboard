@@ -9,11 +9,13 @@ import Link from 'next/link';
 import { albumApi, type Album } from '@/lib/api/albums';
 import { useToast } from '@/hooks/use-toast';
 import { AlbumActionsMenu } from '@/components/albums/album-actions-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AlbumsPage() {
   const { toast } = useToast();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState('recent');
   const [stats, setStats] = useState({
     totalAlbums: 0,
     totalPhotos: 0,
@@ -161,12 +163,17 @@ export default function AlbumsPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Sort by:</span>
-            <select className="text-sm border rounded-md px-3 py-1.5">
-              <option>Recent</option>
-              <option>Name</option>
-              <option>Photo Count</option>
-              <option>Views</option>
-            </select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Recent</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="photo-count">Photo Count</SelectItem>
+                <SelectItem value="views">Views</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

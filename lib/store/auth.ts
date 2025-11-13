@@ -22,7 +22,7 @@ interface AuthStore {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
-  login: (email: string, password: string) => Promise<void>;
+  loginWithVerification: (email: string, password: string) => Promise<{ success: boolean; user?: User; token?: string; requiresVerification?: boolean; email?: string; otpExpiresAt?: string; error?: string }>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -39,41 +39,58 @@ export const useAuthStore = create<AuthStore>()(
       setToken: (token) => set({ token }),
       setLoading: (loading) => set({ loading }),
 
-      login: async (email: string, password: string) => {
+      loginWithVerification: async (email: string, password: string) => {
         set({ loading: true });
         try {
           const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
-            credentials: 'include', // Important: send cookies
+            credentials: 'include',
           });
 
+          const data = await response.json();
+
+          // If verification is required, return info for redirect
+          if (!response.ok && response.status === 403 && data.requiresVerification) {
+            return {
+              success: false,
+              requiresVerification: true,
+              email: data.email,
+              otpExpiresAt: data.otpExpiresAt,
+            };
+          }
+
           if (!response.ok) {
-            const error = await response.json();
-            
             // Handle unauthorized errors during login
             if (response.status === 401) {
               set({ user: null, token: null });
               localStorage.removeItem('auth-storage');
             }
-            
-            throw new Error(error.error || 'Login failed');
+            return {
+              success: false,
+              error: data.error || 'Login failed',
+            };
           }
 
-          const data = await response.json();
           set({
             user: data.user,
-            token: data.token, // Backup token in state
+            token: data.token,
           });
-          
           // Immediately check auth to ensure we have the latest user data
-          // This handles any potential cookie/state sync issues
           setTimeout(() => {
             useAuthStore.getState().checkAuth();
           }, 100);
-        } catch (error) {
-          throw error;
+          return {
+            success: true,
+            user: data.user,
+            token: data.token,
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            error: error?.message || 'Login failed',
+          };
         } finally {
           set({ loading: false });
         }
