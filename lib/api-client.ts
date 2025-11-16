@@ -98,6 +98,10 @@ export async function putWithAuth<T>(
 /**
  * Make authenticated DELETE request
  */
-export async function deleteWithAuth<T>(url: string): Promise<T> {
-  return apiWithAuth<T>(url, { method: 'DELETE' });
+export async function deleteWithAuth<T>(url: string, body?: any): Promise<T> {
+  const options: RequestInit = { method: 'DELETE' };
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+  return apiWithAuth<T>(url, options);
 }

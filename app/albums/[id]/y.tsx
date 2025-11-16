@@ -62,8 +62,8 @@ interface ImagePreviewState {
 }
 
 // Move S3 env variables to top-level constants for client-side usage
-const S3_BUCKET = 'photoalumnus';
-const S3_REGION = 'ap-south-1';
+const S3_BUCKET =  'photoalumnus';
+const S3_REGION =  'ap-south-1';
 
 export default function AlbumDetailPage() {
   const params = useParams();
@@ -573,7 +573,7 @@ export default function AlbumDetailPage() {
                   </div>
                 </div>
               </div>
-
+              
               <div className="flex items-center gap-2">
                 {selectedPhotos.size < photos.length && (
                   <Button variant="outline" size="sm" onClick={selectAllPhotos}>
@@ -581,8 +581,8 @@ export default function AlbumDetailPage() {
                     Select All
                   </Button>
                 )}
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   size="icon"
                   onClick={deselectAllPhotos}
                   title="Deselect all"
@@ -590,8 +590,8 @@ export default function AlbumDetailPage() {
                   <X className="h-4 w-4" />
                 </Button>
                 <div className="w-px h-6 bg-border mx-1" />
-                <Button
-                  variant="destructive"
+                <Button 
+                  variant="destructive" 
                   size="icon"
                   onClick={() => setDeleteDialogOpen(true)}
                   title="Delete selected photos"
@@ -699,7 +699,7 @@ export default function AlbumDetailPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting} onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDeleting} onClick={() => setDeleteDialogOpen(false)  }>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteSelectedPhotos}
                 disabled={isDeleting}
@@ -771,24 +771,14 @@ export default function AlbumDetailPage() {
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
+                  </div>  
 
                   {/* Progress Overview Bar */}
                   <div className="px-4 pt-3 pb-2 bg-muted/30 border-b">
-                    {/* <Progress
-                      value={
-                        uploadingFiles.length > 0
-                          ? Math.min(
-                            100,
-                            uploadingFiles.reduce((acc, file) => acc + (file.progress || 0), 0) /
-                            uploadingFiles.length
-                          )
-                          : null
-                      }
-                      max={100}
+                    <Progress
+                      value={uploadingFiles.reduce((acc, file) => acc + file.progress, 0) / uploadingFiles.length}
                       className="h-2"
-                    /> */}
-
+                    />
                   </div>
 
                   {/* File List */}
@@ -821,7 +811,7 @@ export default function AlbumDetailPage() {
                             {/* Progress Bar */}
                             {uploadingFile.status === 'uploading' && (
                               <div className="mt-2">
-                                {/* <Progress value={uploadingFile.progress || 0} className="h-1" max={100} /> */}
+                                <Progress value={uploadingFile.progress} className="h-1" />
                               </div>
                             )}
 
@@ -946,11 +936,11 @@ export default function AlbumDetailPage() {
                       >
                         <div
                           className={`w-6 h-6 rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 ${isSelected
-                            ? 'bg-primary border-2 border-primary shadow-lg'
-                            : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
+                              ? 'bg-primary border-2 border-primary shadow-lg'
+                              : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
                             }`}
                         >
-                          {!isSelected && <Check className="h-4 w-4 text-transparent hover:scale-110 hover:text-primary" />}
+                          { !isSelected && <Check className="h-4 w-4 text-transparent hover:scale-110 hover:text-primary" />}
                           {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
                         </div>
                       </div>

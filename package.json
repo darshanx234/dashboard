@@ -60,6 +60,7 @@
     "eslint": "8.49.0",
     "eslint-config-next": "13.5.1",
     "input-otp": "^1.2.4",
+    "jose": "^6.1.2",
     "jsonwebtoken": "^9.0.2",
     "lg-fullscreen": "^1.2.1",
     "lg-thumbnail": "^1.2.1",
