@@ -173,6 +173,14 @@ export const photoApi = {
       data
     );
   },
+
+  // Delete multiple photos
+  async deletePhotos(albumId: string, photoIds: string[]) {
+    return deleteWithAuth<{ message: string }>(
+      `/api/albums/${albumId}/photos`,
+      { photoIds }
+    );
+  },
 };
 
 // Upload APIs
@@ -229,7 +237,7 @@ export const uploadApi = {
       }
 
       // Step 4: Create photo record in database
-      const s3Url = `https://${process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME || 'photoalumnus'}.s3.${process.env.NEXT_PUBLIC_AWS_REGION || 'ap-south-1'}.amazonaws.com/${s3Key}`;
+      const s3Url = `https://${'photoalumnus'}.s3.${'ap-south-1'}.amazonaws.com/${s3Key}`;
 
       const { photo } = await photoApi.createPhoto(albumId, {
         filename: file.name,

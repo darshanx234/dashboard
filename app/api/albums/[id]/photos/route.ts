@@ -151,9 +151,11 @@ export async function POST(
       });
     }
 
+    const photoUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600); // 1 hour expiry
+    
     return NextResponse.json({
       message: 'Photo added successfully',
-      photo,
+      photo: { ...photo.toObject?.(), url: photoUrl },
     }, { status: 201 });
   } catch (error: any) {
     console.error('Add Photo Error:', error);
