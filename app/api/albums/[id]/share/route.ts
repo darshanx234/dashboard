@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // POST /api/albums/[id]/share - Share album with users or generate public link
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -25,8 +25,9 @@ export async function POST(
 
     await connectDB();
 
+    const { id } = await params;
     // Check album access
-    const album = await Album.findById(params.id);
+    const album = await Album.findById(id);
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
@@ -54,10 +55,10 @@ export async function POST(
 
     if (shareType === 'link') {
       // PUBLIC SHARING: Generate public link accessible by anyone with the token
-      
+
       // Check if a public link already exists for this album
       const existingPublicShare = await AlbumShare.findOne({
-        albumId: params.id,
+        albumId: id,
         shareType: 'link',
         'sharedWith.email': 'public',
         isActive: true,
@@ -67,11 +68,11 @@ export async function POST(
       if (existingPublicShare) {
         // Update existing public share
         const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
-        
+
         existingPublicShare.permissions = permissions || existingPublicShare.permissions;
         existingPublicShare.expiresAt = expiresAt ? new Date(expiresAt) : existingPublicShare.expiresAt;
         existingPublicShare.password = hashedPassword || existingPublicShare.password;
-        
+
         share = await existingPublicShare.save();
       } else {
         // Create new public share
@@ -79,7 +80,7 @@ export async function POST(
         const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
 
         share = await AlbumShare.create({
-          albumId: params.id,
+          albumId: id,
           photographerId: decoded.userId,
           sharedWith: {
             email: 'public',
@@ -100,14 +101,14 @@ export async function POST(
       }
 
       const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/shared/${share.accessToken}`;
-      
+
       shares.push({
         ...share.toObject(),
         shareUrl,
       });
     } else if (shareType === 'email') {
       // PRIVATE SHARING: Share with specific users via email
-      
+
       if (!emails || !Array.isArray(emails) || emails.length === 0) {
         return NextResponse.json({ error: 'Emails are required for private sharing' }, { status: 400 });
       }
@@ -124,7 +125,7 @@ export async function POST(
       for (const emailData of emails) {
         // Check if already shared with this email
         const existingShare = await AlbumShare.findOne({
-          albumId: params.id,
+          albumId: id,
           shareType: 'email',
           'sharedWith.email': emailData.email.toLowerCase(),
           isActive: true,
@@ -136,14 +137,14 @@ export async function POST(
           existingShare.permissions = permissions || existingShare.permissions;
           existingShare.expiresAt = expiresAt ? new Date(expiresAt) : existingShare.expiresAt;
           existingShare.sharedWith.name = emailData.name || existingShare.sharedWith.name;
-          
+
           share = await existingShare.save();
         } else {
           // Create new share
           const accessToken = crypto.randomBytes(32).toString('hex');
 
           share = await AlbumShare.create({
-            albumId: params.id,
+            albumId: id,
             photographerId: decoded.userId,
             sharedWith: {
               email: emailData.email.toLowerCase(),
@@ -163,7 +164,7 @@ export async function POST(
         }
 
         const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/shared/${share.accessToken}`;
-        
+
         shares.push({
           ...share.toObject(),
           shareUrl,
@@ -180,16 +181,16 @@ export async function POST(
     }
 
     return NextResponse.json({
-      message: shareType === 'link' 
-        ? 'Public share link generated successfully' 
+      message: shareType === 'link'
+        ? 'Public share link generated successfully'
         : `Album shared with ${shares.length} user(s) successfully`,
       shares,
       shareType,
     }, { status: 201 });
   } catch (error: any) {
     console.error('Share Album Error:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Failed to share album' 
+    return NextResponse.json({
+      error: error.message || 'Failed to share album'
     }, { status: 500 });
   }
 }
@@ -197,7 +198,7 @@ export async function POST(
 // GET /api/albums/[id]/share - Get all shares for an album
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -209,8 +210,9 @@ export async function GET(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
 
+    const { id } = await params;
     // Check album access
-    const album = await Album.findById(params.id);
+    const album = await Album.findById(id);
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
@@ -222,7 +224,7 @@ export async function GET(
 
     // Get all active shares for this album
     const shares = await AlbumShare.find({
-      albumId: params.id,
+      albumId: id,
       isActive: true,
     }).sort({ createdAt: -1 });
 
@@ -240,7 +242,7 @@ export async function GET(
     const publicShare = sharesWithUrls.find(s => s.shareType === 'link');
     const privateShares = sharesWithUrls.filter(s => s.shareType === 'email');
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       shares: sharesWithUrls,
       publicShare,
       privateShares,
@@ -255,7 +257,7 @@ export async function GET(
 // DELETE /api/albums/[id]/share?shareId=xxx - Revoke a specific share or all shares
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -267,8 +269,9 @@ export async function DELETE(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
 
+    const { id } = await params;
     // Check album access
-    const album = await Album.findById(params.id);
+    const album = await Album.findById(id);
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
@@ -285,7 +288,7 @@ export async function DELETE(
     if (revokeAll) {
       // Revoke all shares for this album
       const result = await AlbumShare.updateMany(
-        { albumId: params.id, isActive: true },
+        { albumId: id, isActive: true },
         { isActive: false }
       );
 
@@ -297,7 +300,7 @@ export async function DELETE(
       // Revoke specific share
       const share = await AlbumShare.findOne({
         _id: shareId,
-        albumId: params.id,
+        albumId: id,
       });
 
       if (!share) {
@@ -312,8 +315,8 @@ export async function DELETE(
         share,
       });
     } else {
-      return NextResponse.json({ 
-        error: 'Provide shareId or set all=true to revoke all shares' 
+      return NextResponse.json({
+        error: 'Provide shareId or set all=true to revoke all shares'
       }, { status: 400 });
     }
   } catch (error: any) {
@@ -325,7 +328,7 @@ export async function DELETE(
 // PATCH /api/albums/[id]/share - Update share settings
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -339,8 +342,9 @@ export async function PATCH(
 
     await connectDB();
 
+    const { id } = await params;
     // Check album access
-    const album = await Album.findById(params.id);
+    const album = await Album.findById(id);
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
@@ -358,7 +362,7 @@ export async function PATCH(
 
     const share = await AlbumShare.findOne({
       _id: shareId,
-      albumId: params.id,
+      albumId: id,
     });
 
     if (!share) {

@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // GET /api/albums/[id] - Get album details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -22,7 +22,8 @@ export async function GET(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
 
-    const album = await Album.findById(params.id);
+    const { id } = await params;
+    const album = await Album.findById(id);
 
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
@@ -30,7 +31,7 @@ export async function GET(
 
     // Check access permissions
     const isOwner = album.photographerId.toString() === decoded.userId;
-    
+
     if (!isOwner) {
       // TODO: Check if user has shared access
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -45,7 +46,7 @@ export async function GET(
         if (album.coverPhoto.includes('amazonaws.com/')) {
           s3Key = album.coverPhoto.split('amazonaws.com/')[1];
         }
-        
+
         const signedUrl = await generatePresignedDownloadUrl(s3Key, 3600); // 1 hour expiry
         albumWithUrl.coverPhoto = signedUrl;
       } catch (error) {
@@ -64,7 +65,7 @@ export async function GET(
 // PUT /api/albums/[id] - Update album
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -78,7 +79,8 @@ export async function PUT(
 
     await connectDB();
 
-    const album = await Album.findById(params.id);
+    const { id } = await params;
+    const album = await Album.findById(id);
 
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
@@ -91,7 +93,7 @@ export async function PUT(
 
     // Update album
     const updatedAlbum = await Album.findByIdAndUpdate(
-      params.id,
+      id,
       {
         title: body.title,
         description: body.description,
@@ -120,7 +122,7 @@ export async function PUT(
 // DELETE /api/albums/[id] - Delete album and all its photos
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -132,7 +134,8 @@ export async function DELETE(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
 
-    const album = await Album.findById(params.id);
+    const { id } = await params;
+    const album = await Album.findById(id);
 
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
@@ -144,7 +147,7 @@ export async function DELETE(
     }
 
     // Get all photos in the album
-    const photos = await Photo.find({ albumId: params.id });
+    const photos = await Photo.find({ albumId: id });
 
     // Delete all photos from S3
     const s3Keys = photos.map((photo) => photo.s3Key);
@@ -158,10 +161,10 @@ export async function DELETE(
     }
 
     // Delete photos from database
-    await Photo.deleteMany({ albumId: params.id });
+    await Photo.deleteMany({ albumId: id });
 
     // Delete album
-    await Album.findByIdAndDelete(params.id);
+    await Album.findByIdAndDelete(id);
 
     return NextResponse.json({
       message: 'Album and all photos deleted successfully',

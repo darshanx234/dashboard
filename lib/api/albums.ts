@@ -196,13 +196,14 @@ export const uploadApi = {
   },
 
   // Upload file directly to S3 using pre-signed URL
-  async uploadToS3(url: string, file: File) {
+  async uploadToS3(url: string, file: File, signal?: AbortSignal) {
     const response = await fetch(url, {
       method: 'PUT',
       body: file,
       headers: {
         'Content-Type': file.type,
       },
+      signal,
     });
 
     if (!response.ok) {
@@ -379,7 +380,7 @@ export const shareApi = {
     const response = await fetch(`/api/shared/${token}`, {
       credentials: 'include', // Include cookies for access token
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to access shared album');
@@ -388,7 +389,7 @@ export const shareApi = {
   },
 
   // Verify password for protected shared album
-  async verifySharePassword(token: string, password: string): Promise<{ 
+  async verifySharePassword(token: string, password: string): Promise<{
     verified: boolean;
     accessToken?: string;
     expiresIn?: number;
@@ -399,7 +400,7 @@ export const shareApi = {
       credentials: 'include', // Important: to receive and send cookies
       body: JSON.stringify({ password }),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to verify password');

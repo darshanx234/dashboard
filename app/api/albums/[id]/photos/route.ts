@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // GET /api/albums/[id]/photos - Get all photos in an album
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -22,8 +22,9 @@ export async function GET(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
 
+    const { id } = await params;
     // Check album access
-    const album = await Album.findById(params.id);
+    const album = await Album.findById(id);
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
@@ -41,13 +42,13 @@ export async function GET(
     const skip = (page - 1) * limit;
 
     // Get photos with pagination
-    const photos = await Photo.find({ albumId: params.id })
+    const photos = await Photo.find({ albumId: id })
       .sort({ order: 1, createdAt: 1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const total = await Photo.countDocuments({ albumId: params.id });
+    const total = await Photo.countDocuments({ albumId: id });
 
     // Generate presigned URLs for each photo
     const photosWithUrls = await Promise.all(
@@ -92,7 +93,7 @@ export async function GET(
 // POST /api/albums/[id]/photos - Create photo record (after S3 upload)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -106,8 +107,9 @@ export async function POST(
 
     await connectDB();
 
+    const { id } = await params;
     // Check album access
-    const album = await Album.findById(params.id);
+    const album = await Album.findById(id);
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
@@ -119,7 +121,7 @@ export async function POST(
 
     // Create photo record
     const photo = await Photo.create({
-      albumId: params.id,
+      albumId: id,
       photographerId: decoded.userId,
       filename: body.filename,
       originalName: body.originalName,
@@ -140,19 +142,19 @@ export async function POST(
     });
 
     // Update album photo count
-    await Album.findByIdAndUpdate(params.id, {
+    await Album.findByIdAndUpdate(id, {
       $inc: { totalPhotos: 1 },
     });
 
     // Set cover photo if this is the first photo
     if (!album.coverPhoto) {
-      await Album.findByIdAndUpdate(params.id, {
+      await Album.findByIdAndUpdate(id, {
         coverPhoto: body.s3Url,
       });
     }
 
     const photoUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600); // 1 hour expiry
-    
+
     return NextResponse.json({
       message: 'Photo added successfully',
       photo: { ...photo.toObject?.(), url: photoUrl },
@@ -166,7 +168,7 @@ export async function POST(
 // DELETE /api/albums/[id]/photos - Delete multiple photos
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -185,8 +187,9 @@ export async function DELETE(
 
     await connectDB();
 
+    const { id } = await params;
     // Check album access
-    const album = await Album.findById(params.id);
+    const album = await Album.findById(id);
     if (!album) {
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
@@ -199,7 +202,7 @@ export async function DELETE(
     // Get photos to delete
     const photos = await Photo.find({
       _id: { $in: photoIds },
-      albumId: params.id,
+      albumId: id,
     });
 
     if (photos.length === 0) {
@@ -221,18 +224,18 @@ export async function DELETE(
     // Delete from database
     await Photo.deleteMany({
       _id: { $in: photoIds },
-      albumId: params.id,
+      albumId: id,
     });
 
     // Update album photo count
-    await Album.findByIdAndUpdate(params.id, {
+    await Album.findByIdAndUpdate(id, {
       $inc: { totalPhotos: -photos.length },
     });
 
     // If deleted photo was the cover photo, clear it
     const deletedS3Urls = photos.map(p => p.s3Url);
     if (album.coverPhoto && deletedS3Urls.includes(album.coverPhoto)) {
-      await Album.findByIdAndUpdate(params.id, {
+      await Album.findByIdAndUpdate(id, {
         coverPhoto: null,
       });
     }
