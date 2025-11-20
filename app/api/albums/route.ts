@@ -1,22 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 import Album from '@/lib/models/Album';
 import User from '@/lib/models/User';
 import { generatePresignedDownloadUrl } from '@/lib/s3';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { withAuthProtection, canManageAlbums, createForbiddenResponse } from '@/lib/auth/api-auth-helper';
 
 // GET /api/albums - Get all albums for the logged-in photographer
-export async function GET(request: NextRequest) {
+export const GET = withAuthProtection(async (request: NextRequest, user) => {
   try {
-    const token = request.cookies.get('token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
 
     // Get query parameters
@@ -27,7 +18,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build query
-    const query: any = { photographerId: decoded.userId };
+    const query: any = { photographerId: user.userId };
     if (status) {
       query.status = status;
     }
@@ -80,40 +71,32 @@ export async function GET(request: NextRequest) {
     console.error('Get Albums Error:', error);
     return NextResponse.json({ error: 'Failed to fetch albums' }, { status: 500 });
   }
-}
+});
 
 // POST /api/albums - Create a new album
-export async function POST(request: NextRequest) {
+export const POST = withAuthProtection(async (request: NextRequest, user) => {
   try {
-    const token = request.cookies.get('token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
     const body = await request.json();
-
     await connectDB();
 
     // Get user details
-    const user = await User.findById(decoded.userId);
-    if (!user) {
+    const userDoc = await User.findById(user.userId);
+    if (!userDoc) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if user is photographer or admin
-    if (user.role !== 'photographer' && user.role !== 'admin') {
-      return NextResponse.json({ error: 'Only photographers can create albums' }, { status: 403 });
+    // Check if user can manage albums (photographer or admin)
+    if (!canManageAlbums(user)) {
+      return createForbiddenResponse('Only photographers and admins can create albums');
     }
 
     // Create album
     const album = await Album.create({
       title: body.title,
       description: body.description,
-      photographerId: decoded.userId,
-      photographerName: user.name || "default",
-      photographerEmail: user.email || "",
+      photographerId: user.userId,
+      photographerName: userDoc.name || "default",
+      photographerEmail: userDoc.email || "",
       shootDate: body.shootDate || "",
       location: body.location || "",
       isPrivate: body.isPrivate || false,
@@ -131,4 +114,4 @@ export async function POST(request: NextRequest) {
     console.error('Create Album Error:', error);
     return NextResponse.json({ error: 'Failed to create album' }, { status: 500 });
   }
-}
+});

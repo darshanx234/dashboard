@@ -1,18 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, ImageIcon, Users, BarChart3, Plus, Link as LinkIcon, QrCode, Settings as SettingsIcon } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth';
 import { Button } from '@/components/ui/button';
 import { AlbumSelectionDialog } from '@/components/albums/album-selection-dialog';
+import { User } from '@/lib/types/auth.types';
+import { getCurrentUserAction } from '@/lib/actions/auth.action';
 
 export default function Home() {
-  const user = useAuthStore((state) => state.user);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [qrCodeDialogOpen, setQrCodeDialogOpen] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(true);
+const user = useAuthStore((state) => state.user);
+ 
 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const userData = await getCurrentUserAction();
+      // You can now use userdata here or set it to state
+           if (userData?.user) {
+        useAuthStore.getState().setUser(userData.user);
+        setLoadingUser(false);
+      }
+    };
+    fetchUserData();
+  }, []);
   const photographerStats = [
     {
       title: 'Total Albums',
@@ -48,6 +63,14 @@ export default function Home() {
     { title: 'View Analytics', icon: BarChart3, href: '/analytics', action: null },
     { title: 'Manage Settings', icon: SettingsIcon, href: '/settings', action: null },
   ];
+
+  if(loadingUser){
+     return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <AppLayout>

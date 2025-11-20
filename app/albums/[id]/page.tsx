@@ -31,8 +31,10 @@ import {
   Maximize,
 } from 'lucide-react';
 import Link from 'next/link';
-import { albumApi, photoApi, uploadApi, type Album, type Photo } from '@/lib/api/albums';
+import { type Album, type Photo } from '@/lib/api/albums';
 import { useToast } from '@/hooks/use-toast';
+import { getAlbumAction, deleteAlbumAction } from '@/lib/actions/albums.action';
+import { getPhotosAction, deletePhotosAction, getPresignedUrlAction, uploadToS3Action, createPhotoAction } from '@/lib/actions/photos.action';
 import { ShareDialog } from '@/components/albums/share-dialog';
 import { EditAlbumDialog } from '@/components/albums/edit-album-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -101,13 +103,20 @@ export default function AlbumDetailPage() {
   const fetchAlbumData = async () => {
     try {
       setLoading(true);
-      const [albumResponse, photosResponse] = await Promise.all([
-        albumApi.getAlbum(albumId),
-        photoApi.getPhotos(albumId, { limit: 100 }),
+      const [albumResult, photosResult] = await Promise.all([
+        getAlbumAction(albumId),
+        getPhotosAction(albumId, { limit: 100 }),
       ]);
 
-      setAlbum(albumResponse.album);
-      setPhotos(photosResponse.photos);
+      console.log(albumResult);
+      
+
+      if (albumResult.success && albumResult.data) {
+        setAlbum(albumResult.data.album);
+      }
+      if (photosResult.success && photosResult.data) {
+        setPhotos(photosResult.data.photos);
+      }
     } finally {
       setLoading(false);
     }
@@ -223,12 +232,18 @@ export default function AlbumDetailPage() {
         );
 
         // Step 1: Get pre-signed URL
-        const { uploadUrl, s3Key } = await uploadApi.getPresignedUrl({
+        const presignedResult = await getPresignedUrlAction({
           albumId,
           filename: file.name,
           mimeType: file.type,
           fileSize: file.size,
         });
+
+        if (!presignedResult.success || !presignedResult.data) {
+          throw new Error(presignedResult.error || 'Failed to get presigned URL');
+        }
+
+        const { uploadUrl, s3Key } = presignedResult.data;
 
         setUploadingFiles((prev) =>
           prev.map((uf, index) =>
@@ -237,7 +252,10 @@ export default function AlbumDetailPage() {
         );
 
         // Step 2: Upload to S3
-        await uploadApi.uploadToS3(uploadUrl, file);
+        const uploadResult = await uploadToS3Action(uploadUrl, file);
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Failed to upload to S3');
+        }
 
         setUploadingFiles((prev) =>
           prev.map((uf, index) =>
@@ -268,7 +286,7 @@ export default function AlbumDetailPage() {
         // Step 4: Create photo record
         const s3Url = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${s3Key}`;
 
-        const { photo } = await photoApi.createPhoto(albumId, {
+        const createResult = await createPhotoAction(albumId, {
           filename: file.name,
           originalName: file.name,
           s3Key,
@@ -280,6 +298,15 @@ export default function AlbumDetailPage() {
           order: photos.length + i,
         });
 
+        if (!createResult.success) {
+          throw new Error(createResult.error || 'Failed to create photo record');
+        }
+
+        const photo = createResult.data?.photo;
+        if (!photo) {
+          throw new Error('No photo data returned');
+        }
+
         // Update success
         setUploadingFiles((prev) =>
           prev.map((uf, index) =>
@@ -288,8 +315,6 @@ export default function AlbumDetailPage() {
               : uf
           )
         );
-
-        // fetchAlbumData();
 
         // Add to photos list
         setPhotos((prev) => [...prev, photo]);
@@ -346,7 +371,10 @@ export default function AlbumDetailPage() {
     }
 
     try {
-      await albumApi.deleteAlbum(albumId);
+      const result = await deleteAlbumAction(albumId);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete album');
+      }
       toast({
         title: 'Success',
         description: 'Album deleted successfully',
@@ -388,11 +416,15 @@ export default function AlbumDetailPage() {
       setIsDeleting(true);
       const photoIds = Array.from(selectedPhotos);
 
-      const data = await photoApi.deletePhotos(albumId, photoIds);
+      const result = await deletePhotosAction(albumId, photoIds);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete photos');
+      }
 
       toast({
         title: 'Success',
-        description: data.message,
+        description: 'Photos deleted successfully',
       });
 
       // Close image preview modal if open
@@ -415,7 +447,7 @@ export default function AlbumDetailPage() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }
 
   // Image Preview Functions
   const openImagePreview = (index: number) => {

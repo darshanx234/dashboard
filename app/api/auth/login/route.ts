@@ -2,7 +2,7 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import OTP from '@/lib/models/OTP';
-import { generateToken } from '@/lib/jwt';
+import { generateTokens } from '@/lib/jwt';
 import { generateOTP, sendOTPEmail } from '@/lib/email';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -76,14 +76,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate token with role
-    const token = generateToken({
+    // Generate access and refresh tokens with role
+    const tokens = generateTokens({
       userId: user._id.toString(),
       email: user.email,
       role: user.role,
     });
 
-    // Create response with token in httpOnly cookie
+    // Create response with tokens in httpOnly cookies
     const response = NextResponse.json(
       {
         message: 'Login successful',
@@ -100,12 +100,20 @@ export async function POST(request: NextRequest) {
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },
-        token,
+        tokens,
       },
       { status: 200 }
     );
 
-    response.cookies.set('token', token, {
+    response.cookies.set('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60, // 15 minutes
+      path: '/',
+    });
+
+    response.cookies.set('refreshToken', tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',

@@ -6,14 +6,15 @@ import { AppHeader } from './app-header';
 import { RoleProtection } from './role-protection';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export  function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const [hasInitialized, setHasInitialized] = React.useState(false);
+  const [hasInitialized, setHasInitialized] = React.useState(true);
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const loading = useAuthStore((state) => state.loading);
 
@@ -22,16 +23,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   // Initialize auth on mount - runs only once
-  React.useEffect(() => {
-    const initAuth = async () => {
-      await checkAuth();
-      setHasInitialized(true);
-    };
-    initAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once
+  // React.useEffect(() => {
+  //   const initAuth = async () => {
+  //     await checkAuth();
+  //     setHasInitialized(true);
+  //   };
+  //   initAuth();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // Empty dependency array ensures this runs only once
 
-  
+
 
   // Show loading state during initial auth check
   if (!hasInitialized) {

@@ -10,6 +10,7 @@ import { albumApi, type Album } from '@/lib/api/albums';
 import { useToast } from '@/hooks/use-toast';
 import { AlbumActionsMenu } from '@/components/albums/album-actions-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getAlbumsAction } from '@/lib/actions/albums.action';
 
 export default function AlbumsPage() {
   const { toast } = useToast();
@@ -30,15 +31,23 @@ export default function AlbumsPage() {
   const fetchAlbums = async () => {
     try {
       setLoading(true);
-      const { albums: fetchedAlbums } = await albumApi.getAlbums({ limit: 100 });
+      const response = await getAlbumsAction({ limit: 100 });
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to fetch albums');
+      }
+
+      const fetchedAlbums = response.data.albums;
       setAlbums(fetchedAlbums);
+
+      console.log(fetchedAlbums);
 
       // Calculate stats
       const stats = {
         totalAlbums: fetchedAlbums.length,
-        totalPhotos: fetchedAlbums.reduce((sum, album) => sum + album.totalPhotos, 0),
-        sharedAlbums: fetchedAlbums.filter((album) => album.status === 'published').length,
-        totalViews: fetchedAlbums.reduce((sum, album) => sum + album.totalViews, 0),
+        totalPhotos: fetchedAlbums.reduce((sum: number, album: Album) => sum + album.totalPhotos, 0),
+        sharedAlbums: fetchedAlbums.filter((album: Album) => album.status === 'published').length,
+        totalViews: fetchedAlbums.reduce((sum: number, album: Album) => sum + album.totalViews, 0),
       };
       setStats(stats);
     } catch (error: any) {
@@ -54,20 +63,20 @@ export default function AlbumsPage() {
   };
 
   const handleAlbumUpdated = (updatedAlbum: Album) => {
-    setAlbums(albums.map(album => 
+    setAlbums(albums.map((album: Album) => 
       album._id === updatedAlbum._id ? updatedAlbum : album
     ));
   };
 
   const handleAlbumDeleted = (albumId: string) => {
-    setAlbums(albums.filter(album => album._id !== albumId));
+    setAlbums(albums.filter((album: Album) => album._id !== albumId));
     // Recalculate stats
-    const remainingAlbums = albums.filter(album => album._id !== albumId);
+    const remainingAlbums = albums.filter((album: Album) => album._id !== albumId);
     setStats({
       totalAlbums: remainingAlbums.length,
-      totalPhotos: remainingAlbums.reduce((sum, album) => sum + album.totalPhotos, 0),
-      sharedAlbums: remainingAlbums.filter((album) => album.status === 'published').length,
-      totalViews: remainingAlbums.reduce((sum, album) => sum + album.totalViews, 0),
+      totalPhotos: remainingAlbums.reduce((sum: number, album: Album) => sum + album.totalPhotos, 0),
+      sharedAlbums: remainingAlbums.filter((album: Album) => album.status === 'published').length,
+      totalViews: remainingAlbums.reduce((sum: number, album: Album) => sum + album.totalViews, 0),
     });
   };
 

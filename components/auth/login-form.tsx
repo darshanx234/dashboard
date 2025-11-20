@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { loginAction } from '@/lib/actions/auth.action';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -26,32 +27,35 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await loginWithVerification(email, password);
+      const result = await loginAction({ email, password: password as string });
 
-      if (result.requiresVerification) {
-        // Redirect to OTP verification page
-        const params = new URLSearchParams({
-          email: result.email || email,
-          purpose: 'email-verification',
-          redirect: '/',
-        });
-        if (result.otpExpiresAt) {
-          params.append('expiresAt', result.otpExpiresAt);
-        }
-        router.push(`/verify-otp?${params.toString()}`);
-        return;
-      }
+      // if (result.requiresVerification) {
+      //   // Redirect to OTP verification page
+      //   const params = new URLSearchParams({
+      //     email: result.email || email,
+      //     purpose: 'email-verification',
+      //     redirect: '/',
+      //   });
+      //   if (result.otpExpiresAt) {
+      //     params.append('expiresAt', result.otpExpiresAt);
+      //   }
+      //   router.push(`/verify-otp?${params.toString()}`);
+      //   return;
+      // }
 
+      console.log(result)
       if (!result.success) {
         setError(result.error || 'Login failed');
         return;
       }
 
       // Login successful
-      const homePage = getDefaultHomePage(result.user?.role || 'photographer');
-      router.push(homePage);
+      // const homePage = getDefaultHomePage(result.user?.role || 'photographer');
+      // const homePage = getDefaultHomePage( 'photographer');
+      // router.push(homePage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
+      // setError(err instanceof Error ? err.message : 'Failed to sign in');
+      console.log(err)
     } finally {
       setLoading(false);
     }
