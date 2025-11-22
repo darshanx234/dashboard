@@ -61,7 +61,7 @@ export default function AlbumDetailPage() {
 
   const albumId = params.id as string;
 
-  // Initialize upload service
+  // Initialize upload serv ice
   useEffect(() => {
     uploadServiceRef.current = new UploadService({
       onProgress: (taskId, progress) => {
@@ -84,9 +84,7 @@ export default function AlbumDetailPage() {
         setPhotos((prev) => [...prev, photo]);
 
         // Update album count
-        if (album) {
-          setAlbum({ ...album, totalPhotos: album.totalPhotos + 1 });
-        }
+        setAlbum((prev) => prev ? { ...prev, totalPhotos: prev.totalPhotos + 1 } : null);
       },
       onError: (taskId, error) => {
         setUploadingFiles((prev) =>
@@ -115,20 +113,24 @@ export default function AlbumDetailPage() {
       onComplete: () => {
         setIsUploading(false);
 
-        const successCount = uploadingFiles.filter((f) => f.status === 'success').length;
-        if (successCount > 0) {
-          toast({
-            title: 'Upload complete',
-            description: `Successfully uploaded ${successCount} photo${successCount > 1 ? 's' : ''}`,
-          });
-        }
+        // Get success count from upload service queue status
+        setUploadingFiles((prev) => {
+          const successCount = prev.filter((f) => f.status === 'success').length;
+          if (successCount > 0) {
+            toast({
+              title: 'Upload complete',
+              description: `Successfully uploaded ${successCount} photo${successCount > 1 ? 's' : ''}`,
+            });
+          }
+          return prev;
+        });
       },
     });
 
     return () => {
       uploadServiceRef.current?.destroy();
     };
-  }, [album]);
+  }, []); // Remove album dependency to prevent recreation during uploads
 
   // Fetch album and photos
   useEffect(() => {
@@ -226,8 +228,6 @@ export default function AlbumDetailPage() {
 
     // Add files to upload service queue
     const taskIds = uploadServiceRef.current.addToQueue(files, albumId);
-
-    console.log(taskIds);
 
     // Create uploading file entries
     const newUploadingFiles: UploadingFile[] = files.map((file, index) => ({

@@ -112,7 +112,7 @@ export class UploadService {
 
         try {
             task.status = 'uploading';
-            this.callbacks.onStatusChange(task.id, 'uploading');
+            this.callbacks.onStatusChange(task.id, 'uploading');    
 
             // Step 1: Get pre-signed URL (10%)
             this.updateProgress(task, 10);
