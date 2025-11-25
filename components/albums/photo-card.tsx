@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Download, Heart, Check, Image as ImageIcon } from 'lucide-react';
@@ -14,7 +14,7 @@ interface PhotoCardProps {
     onClick: () => void;
 }
 
-export function PhotoCard({ photo, isSelected, hasSelection = false, onSelect, onClick }: PhotoCardProps) {
+export const PhotoCard = memo(function PhotoCard({ photo, isSelected, hasSelection = false, onSelect, onClick }: PhotoCardProps) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
@@ -74,8 +74,8 @@ export function PhotoCard({ photo, isSelected, hasSelection = false, onSelect, o
                 >
                     <div
                         className={`w-6 h-6 rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 ${isSelected
-                                ? 'bg-primary border-2 border-primary shadow-lg'
-                                : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
+                            ? 'bg-primary border-2 border-primary shadow-lg'
+                            : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
                             }`}
                     >
                         {!isSelected && (
@@ -179,4 +179,4 @@ export function PhotoCard({ photo, isSelected, hasSelection = false, onSelect, o
             </div>
         </div>
     );
-}
+});

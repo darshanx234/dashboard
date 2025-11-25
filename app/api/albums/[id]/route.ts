@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 import Album from '@/lib/models/Album';
 import Photo from '@/lib/models/Photo';
+import Client from '@/lib/models/Client';
 import { deleteFromS3, generatePresignedDownloadUrl } from '@/lib/s3';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -91,6 +92,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Get the old album to check if clientId changed
+    const oldAlbum = await Album.findById(id).lean();
+
+    if (!oldAlbum) {
+      return NextResponse.json({ error: 'Album not found' }, { status: 404 });
+    }
+
     // Update album
     const updatedAlbum = await Album.findByIdAndUpdate(
       id,
@@ -105,9 +113,28 @@ export async function PUT(
         allowFavorites: body.allowFavorites,
         status: body.status,
         coverPhoto: body.coverPhoto,
+        clientId: body.clientId,
       },
       { new: true, runValidators: true }
     );
+
+    // Handle client change
+    if (body.clientId !== undefined && oldAlbum.clientId !== body.clientId) {
+      // Remove from old client
+      if (oldAlbum.clientId) {
+        await Client.findOneAndUpdate(
+          { _id: oldAlbum.clientId, photographerId: decoded.userId },
+          { $pull: { albumIds: id } }
+        );
+      }
+      // Add to new client
+      if (body.clientId) {
+        await Client.findOneAndUpdate(
+          { _id: body.clientId, photographerId: decoded.userId },
+          { $addToSet: { albumIds: id } }
+        );
+      }
+    }
 
     return NextResponse.json({
       message: 'Album updated successfully',
@@ -165,6 +192,14 @@ export async function DELETE(
 
     // Delete album
     await Album.findByIdAndDelete(id);
+
+    // Remove album from client's albumIds if it has a client
+    if (album.clientId) {
+      await Client.findOneAndUpdate(
+        { _id: album.clientId, photographerId: decoded.userId },
+        { $pull: { albumIds: id } }
+      );
+    }
 
     return NextResponse.json({
       message: 'Album and all photos deleted successfully',

@@ -14,6 +14,7 @@ const roleRoutes = {
     '/documents',
     '/settings',
     '/profile',
+    '/calendar'
   ],
   client: [
     '/my-albums',
@@ -42,7 +43,7 @@ export function hasRoleAccess(
   role: 'photographer' | 'client' | 'admin'
 ): boolean {
   const allowedRoutes = roleRoutes[role];
-  
+
   // Check if route matches exactly or starts with an allowed route
   return allowedRoutes.some(
     (allowedRoute) => route === allowedRoute || route.startsWith(`${allowedRoute}/`)

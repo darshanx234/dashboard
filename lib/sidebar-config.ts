@@ -9,6 +9,7 @@ import {
   Download,
   Building2,
   User,
+  Calendar,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -52,6 +53,12 @@ export const sidebarConfig: SidebarConfig = {
       href: '/clients',
       icon: Users,
       description: 'List of client names linked to albums',
+    },
+    {
+      title: 'Calendar',
+      href: '/calendar',
+      icon: Calendar,
+      description: 'Event scheduling and calendar view',
     },
     {
       title: 'Documents',

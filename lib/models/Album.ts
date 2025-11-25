@@ -6,6 +6,7 @@ export interface IAlbum extends Document {
   photographerId: mongoose.Types.ObjectId;
   photographerName: string;
   photographerEmail: string;
+  clientId?: string;
   coverPhoto?: string; // S3 URL
   shootDate?: Date;
   location?: string;
@@ -42,11 +43,15 @@ const AlbumSchema: Schema = new Schema(
     },
     photographerName: {
       type: String,
-    //   required: true,
+      //   required: true,
     },
     photographerEmail: {
       type: String,
       required: true,
+    },
+    clientId: {
+      type: String,
+      index: true,
     },
     coverPhoto: {
       type: String, // S3 URL

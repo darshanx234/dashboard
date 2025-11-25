@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,9 @@ import { SelectionHeader } from '@/components/albums/selection-header';
 // Upload Service
 import { UploadService, type UploadTask } from '@/lib/services/upload-service';
 
+// Infinite Scroll Hook
+import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
+
 export default function AlbumDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -59,6 +62,11 @@ export default function AlbumDetailPage() {
     zoom: 1,
   });
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [hasMorePhotos, setHasMorePhotos] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const albumId = params.id as string;
 
   // Initialize upload serv ice
@@ -80,8 +88,8 @@ export default function AlbumDetailPage() {
           )
         );
 
-        // Add photo to gallery
-        setPhotos((prev) => [...prev, photo]);
+        // Add photo to gallery at the beginning (new uploads appear first)
+        setPhotos((prev) => [photo, ...prev]);
 
         // Update album count
         setAlbum((prev) => prev ? { ...prev, totalPhotos: prev.totalPhotos + 1 } : null);
@@ -142,15 +150,54 @@ export default function AlbumDetailPage() {
       setLoading(true);
       const [albumResponse, photosResponse] = await Promise.all([
         albumApi.getAlbum(albumId),
-        photoApi.getPhotos(albumId, { limit: 100 }),
+        photoApi.getPhotos(albumId, { page: 1, limit: 30 }),
       ]);
 
       setAlbum(albumResponse.album);
       setPhotos(photosResponse.photos);
+      setPage(1);
+      setHasMorePhotos(photosResponse.pagination.page < photosResponse.pagination.pages);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load album',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  // Fetch more photos for infinite scroll
+  const fetchMorePhotos = useCallback(async () => {
+    if (loadingMore || !hasMorePhotos) return;
+
+    try {
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      const photosResponse = await photoApi.getPhotos(albumId, { page: nextPage, limit: 30 });
+
+      setPhotos((prev) => [...prev, ...photosResponse.photos]);
+      setPage(nextPage);
+      setHasMorePhotos(photosResponse.pagination.page < photosResponse.pagination.pages);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load more photos',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [albumId, page, hasMorePhotos, loadingMore, toast]);
+
+  // Infinite scroll hook
+  const sentinelRef = useInfiniteScroll({
+    fetchMore: fetchMorePhotos,
+    hasMore: hasMorePhotos,
+    loading: loadingMore,
+    rootMargin: '200px',
+  });
 
   // File handling
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -533,6 +580,18 @@ export default function AlbumDetailPage() {
           onPhotoClick={openImagePreview}
           onPhotoSelect={togglePhotoSelection}
         />
+
+        {/* Infinite Scroll Sentinel */}
+        {hasMorePhotos && (
+          <div ref={sentinelRef} className="flex justify-center py-8">
+            {loadingMore && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm">Loading more photos...</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Image Preview Modal */}
         <ImagePreviewModal

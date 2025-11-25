@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Calendar as CalendarIcon, MapPin, Lock } from 'lucide-react';
 import { albumApi, type Album } from '@/lib/api/albums';
+import { clientApi, type Client } from '@/lib/api/clients';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,8 @@ export function EditAlbumDialog({ open, onOpenChange, album, onAlbumUpdated }: E
   const [password, setPassword] = useState('');
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [allowFavorites, setAllowFavorites] = useState(true);
+  const [clientId, setClientId] = useState<string>('');
+  const [clients, setClients] = useState<Client[]>([]);
 
   // Initialize form with album data
   useEffect(() => {
@@ -65,8 +68,24 @@ export function EditAlbumDialog({ open, onOpenChange, album, onAlbumUpdated }: E
       setPassword('');
       setAllowDownloads(album.allowDownloads);
       setAllowFavorites(album.allowFavorites);
+      setClientId((album as any).clientId || '');
     }
   }, [album, open]);
+
+  // Load clients
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const response = await clientApi.getClients({ limit: 100 });
+        setClients(response.clients);
+      } catch (error) {
+        console.error('Failed to load clients:', error);
+      }
+    };
+    if (open) {
+      loadClients();
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +112,7 @@ export function EditAlbumDialog({ open, onOpenChange, album, onAlbumUpdated }: E
         password: hasPassword ? password : undefined,
         allowDownloads,
         allowFavorites,
+        clientId: clientId || undefined,
       };
 
       const { album: updatedAlbum } = await albumApi.updateAlbum(album._id, updateData);
@@ -208,6 +228,23 @@ export function EditAlbumDialog({ open, onOpenChange, album, onAlbumUpdated }: E
                   <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
                   <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="client">Client (Optional)</Label>
+              <Select value={clientId || "none"} onValueChange={(value) => setClientId(value === "none" ? "" : value)}>
+                <SelectTrigger id="client">
+                  <SelectValue placeholder="Select a client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Client</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client._id} value={client._id}>
+                      {client.firstName} {client.lastName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

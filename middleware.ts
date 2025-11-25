@@ -15,7 +15,16 @@ export function middleware(request: NextRequest) {
   }
 
   // Protected routes that require authentication
-  const protectedRoutes = ['/dashboard'];
+  const protectedRoutes = [
+    '/dashboard',
+    '/albums',
+    '/calendar',
+    '/clients',
+    '/analytics',
+    '/documents',
+    '/settings',
+    '/profile'
+  ];
   const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route));
 
   // If on auth routes and has valid token, redirect to home
@@ -24,16 +33,16 @@ export function middleware(request: NextRequest) {
   }
 
   // If on protected route without token, redirect to login
-//   if (isProtectedRoute && !token) {
-//     return NextResponse.redirect(new URL('/login', request.url));
-//   }
+  //   if (isProtectedRoute && !token) {
+  //     return NextResponse.redirect(new URL('/login', request.url));
+  //   }
 
   // If token exists but is invalid, redirect to login
-//   if (token && !verifyToken(token)) {
-//     const response = NextResponse.redirect(new URL('/login', request.url));
-//     response.cookies.delete('token');
-//     return response;
-//   }
+  //   if (token && !verifyToken(token)) {
+  //     const response = NextResponse.redirect(new URL('/login', request.url));
+  //     response.cookies.delete('token');
+  //     return response;
+  //   }
 
   return NextResponse.next();
 }
