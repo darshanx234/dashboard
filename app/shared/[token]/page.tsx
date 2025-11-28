@@ -15,18 +15,13 @@ import {
     MapPin,
     Image as ImageIcon,
     AlertCircle,
-    ArrowLeft,
-    X,
-    ChevronLeft,
-    ChevronRight,
-    ZoomIn,
-    ZoomOut,
-    Eye,
 } from 'lucide-react';
 import { shareApi, type Album, type Photo, type SharePermissions } from '@/lib/api/albums';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { ClientIdentityDialog } from '@/components/shared/ClientIdentityDialog';
+import { ImagePreview } from '@/components/shared/ImagePreview';
 
 export default function SharedAlbumPage() {
     const params = useParams();
@@ -46,11 +41,38 @@ export default function SharedAlbumPage() {
     const [imagePreview, setImagePreview] = useState({
         isOpen: false,
         currentIndex: 0,
-        zoom: 1,
     });
 
+    // Client identity state
+    const [showIdentityDialog, setShowIdentityDialog] = useState(false);
+    const [isIdentitySubmitting, setIsIdentitySubmitting] = useState(false);
+    const [clientId, setClientId] = useState<string | null>(null);
+    const [clientIdentifier, setClientIdentifier] = useState<string>('');
+
+    // Photo interactions state
+    const [photoFavorites, setPhotoFavorites] = useState<Record<string, boolean>>({});
+    const [photoComments, setPhotoComments] = useState<Record<string, any[]>>({});
+
     useEffect(() => {
-        loadSharedAlbum();
+        // Generate or retrieve client identifier
+        let identifier = localStorage.getItem(`client_identifier_${token}`);
+        if (!identifier) {
+            // Generate unique identifier for this client
+            identifier = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem(`client_identifier_${token}`, identifier);
+        }
+        setClientIdentifier(identifier);
+
+        // Check if client identity exists in localStorage
+        const storedClientId = localStorage.getItem(`client_${token}`);
+        if (storedClientId) {
+            setClientId(storedClientId);
+            loadSharedAlbum();
+        } else {
+            // Show identity dialog first
+            setShowIdentityDialog(true);
+            setLoading(false);
+        }
     }, [token]);
 
     const loadSharedAlbum = async () => {
@@ -73,12 +95,12 @@ export default function SharedAlbumPage() {
             setExpiresAt(response.expiresAt || null);
             setVerified(true);
             setRequiresPassword(false);
-            
+
         } catch (error: any) {
             console.error('Load shared album error:', error);
-            
+
             // Check if it's a password required error
-            if (error.message.includes('Password verification required') || 
+            if (error.message.includes('Password verification required') ||
                 error.message.includes('Access token expired')) {
                 setRequiresPassword(true);
                 setVerified(false);
@@ -108,16 +130,16 @@ export default function SharedAlbumPage() {
 
         try {
             setVerifying(true);
-            
+
             // Verify password - this will set a cookie with access token
             await shareApi.verifySharePassword(token, password);
-            
+
             // Password verified, now load the album with the access token
             toast({
                 title: 'Success',
                 description: 'Password verified successfully',
             });
-            
+
             // Reload the album - this time with the access token cookie
             await loadSharedAlbum();
         } catch (error: any) {
@@ -128,6 +150,125 @@ export default function SharedAlbumPage() {
             });
         } finally {
             setVerifying(false);
+        }
+    };
+
+    // Handle client identity submission
+    const handleIdentitySubmit = async (name: string, email?: string) => {
+        setIsIdentitySubmitting(true);
+        try {
+            const response = await shareApi.saveClientIdentity(token, name, email, clientIdentifier);
+            setClientId(response.clientId);
+            localStorage.setItem(`client_${token}`, response.clientId);
+            setShowIdentityDialog(false);
+
+            const welcomeMessage = response.isReturningClient
+                ? 'Welcome back!'
+                : 'Welcome!';
+
+            toast({
+                title: welcomeMessage,
+                description: 'Loading album...',
+            });
+
+            // Now load the album
+            await loadSharedAlbum();
+
+            // Track album_open interaction
+            await shareApi.trackInteraction(token, 'album_open', {
+                clientId: response.clientId,
+            });
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to save your information',
+                variant: 'destructive',
+            });
+            throw error;
+        } finally {
+            setIsIdentitySubmitting(false);
+        }
+    };
+
+    // Handle favorite toggle
+    const handleFavoriteToggle = async (photoId: string, isFavorite: boolean) => {
+        if (!permissions?.canFavorite) {
+            toast({
+                title: 'Not Allowed',
+                description: 'Favorites are not enabled for this album',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        try {
+            const response = await shareApi.toggleFavorite(token, photoId, isFavorite, clientId || undefined);
+
+            // Update local state
+            setPhotoFavorites(prev => ({ ...prev, [photoId]: isFavorite }));
+
+            // Update photo favorites count
+            setPhotos(prev => prev.map(p =>
+                p._id === photoId
+                    ? { ...p, favoritesCount: response.favoritesCount }
+                    : p
+            ));
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to update favorite',
+                variant: 'destructive',
+            });
+            throw error;
+        }
+    };
+
+    // Handle add comment
+    const handleAddComment = async (photoId: string, comment: string) => {
+        if (!permissions?.canComment) {
+            toast({
+                title: 'Not Allowed',
+                description: 'Comments are not enabled for this album',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        try {
+            const response = await shareApi.addComment(token, photoId, comment, clientId || undefined);
+
+            // Update local comments
+            setPhotoComments(prev => ({
+                ...prev,
+                [photoId]: [response.comment, ...(prev[photoId] || [])],
+            }));
+
+            toast({
+                title: 'Success',
+                description: 'Comment added',
+            });
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to add comment',
+                variant: 'destructive',
+            });
+            throw error;
+        }
+    };
+
+    // Track photo view
+    const handlePhotoView = async (photoId: string) => {
+        if (!clientId) return;
+
+        try {
+            await shareApi.trackInteraction(token, 'photo_view', {
+                clientId,
+                photoId,
+            });
+        } catch (error) {
+            // Silently fail for tracking
+            console.error('Failed to track photo view:', error);
         }
     };
 
@@ -164,75 +305,18 @@ export default function SharedAlbumPage() {
 
     // Image Preview Functions
     const openImagePreview = (index: number) => {
-        setImagePreview({ isOpen: true, currentIndex: index, zoom: 1 });
+        setImagePreview({ isOpen: true, currentIndex: index });
         document.body.style.overflow = 'hidden';
     };
 
     const closeImagePreview = () => {
-        setImagePreview({ isOpen: false, currentIndex: 0, zoom: 1 });
+        setImagePreview({ isOpen: false, currentIndex: 0 });
         document.body.style.overflow = 'unset';
     };
 
-    const goToNextImage = () => {
-        setImagePreview(prev => ({
-            ...prev,
-            currentIndex: (prev.currentIndex + 1) % photos.length,
-            zoom: 1,
-        }));
+    const handleNavigate = (index: number) => {
+        setImagePreview(prev => ({ ...prev, currentIndex: index }));
     };
-
-    const goToPrevImage = () => {
-        setImagePreview(prev => ({
-            ...prev,
-            currentIndex: prev.currentIndex === 0 ? photos.length - 1 : prev.currentIndex - 1,
-            zoom: 1,
-        }));
-    };
-
-    const handleZoomIn = () => {
-        setImagePreview(prev => ({ ...prev, zoom: Math.min(prev.zoom + 0.5, 3) }));
-    };
-
-    const handleZoomOut = () => {
-        setImagePreview(prev => ({ ...prev, zoom: Math.max(prev.zoom - 0.5, 0.5) }));
-    };
-
-    const handleResetZoom = () => {
-        setImagePreview(prev => ({ ...prev, zoom: 1 }));
-    };
-
-    // Keyboard Navigation
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (!imagePreview.isOpen) return;
-
-            switch (e.key) {
-                case 'Escape':
-                    closeImagePreview();
-                    break;
-                case 'ArrowLeft':
-                    goToPrevImage();
-                    break;
-                case 'ArrowRight':
-                    goToNextImage();
-                    break;
-                case '+':
-                case '=':
-                    handleZoomIn();
-                    break;
-                case '-':
-                case '_':
-                    handleZoomOut();
-                    break;
-                case '0':
-                    handleResetZoom();
-                    break;
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [imagePreview.isOpen, photos.length]);
 
     // Password required view
     if (requiresPassword && !verified) {
@@ -288,6 +372,19 @@ export default function SharedAlbumPage() {
         );
     }
 
+    // Show identity dialog first if client hasn't identified themselves
+    if (showIdentityDialog && !clientId) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+                <ClientIdentityDialog
+                    open={showIdentityDialog}
+                    onSubmit={handleIdentitySubmit}
+                    isSubmitting={isIdentitySubmitting}
+                />
+            </div>
+        );
+    }
+
     // Error state
     if (!album) {
         return (
@@ -308,87 +405,99 @@ export default function SharedAlbumPage() {
     // Main album view
     return (
         <div className="min-h-screen bg-background">
-            <div className="space-y-6 container mx-auto px-4 py-6">
-                {/* Header - Not Fixed */}
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-start justify-between">
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                {/* Album Header */}
+                <div className="mb-8">
+                    {/* Title and Share Type */}
+                    <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                            <h1 className="text-2xl md:text-3xl font-bold">{album.title}</h1>
+                            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+                                {album.title}
+                            </h1>
                             {album.description && (
-                                <p className="text-muted-foreground mt-1 text-sm md:text-base">
+                                <p className="text-muted-foreground text-base md:text-lg max-w-3xl">
                                     {album.description}
                                 </p>
                             )}
                         </div>
-                        <div className="flex gap-2 ml-4">
-                            {shareType === 'link' && (
-                                <Badge variant="secondary">Public Link</Badge>
-                            )}
-                            {shareType === 'email' && (
-                                <Badge variant="secondary">Private Share</Badge>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Metadata Row */}
-                    <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs md:text-sm">
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <ImageIcon className="h-4 w-4" />
-                            <span className="font-medium text-foreground">{album.totalPhotos}</span>
-                            <span>photos</span>
-                        </div>
-                        {album.shootDate && (
-                            <>
-                                <span className="text-muted-foreground">•</span>
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>{format(new Date(album.shootDate), 'MMM d, yyyy')}</span>
-                                </div>
-                            </>
-                        )}
-                        {album.location && (
-                            <>
-                                <span className="text-muted-foreground">•</span>
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>{album.location}</span>
-                                </div>
-                            </>
-                        )}
-                        {expiresAt && (
-                            <>
-                                <span className="text-muted-foreground">•</span>
-                                <div className="flex items-center gap-1.5 text-orange-500">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>Expires {format(new Date(expiresAt), 'MMM d, yyyy')}</span>
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Photographer & Permissions */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm">
-                        {album.photographerName && (
-                            <span className="text-muted-foreground">
-                                By <span className="text-foreground font-medium">{album.photographerName}</span>
-                            </span>
-                        )}
-                        {permissions?.canDownload && (
-                            <>
-                                {album.photographerName && <span className="text-muted-foreground">•</span>}
-                                <Badge variant="outline" className="text-xs">
-                                    <Download className="h-3 w-3 mr-1" />
-                                    Downloads Enabled
-                                </Badge>
-                            </>
-                        )}
-                        {permissions?.canFavorite && (
-                            <Badge variant="outline" className="text-xs">
-                                <Heart className="h-3 w-3 mr-1" />
-                                Can Favorite
+                        {(shareType === 'link' || shareType === 'email') && (
+                            <Badge variant="secondary" className="ml-4 shrink-0">
+                                {shareType === 'link' ? 'Public Link' : 'Private Share'}
                             </Badge>
                         )}
                     </div>
+
+                    {/* Metadata Card */}
+                    <Card className="border-none shadow-sm bg-muted/30">
+                        <CardContent className="p-4">
+                            <div className="flex flex-wrap items-center gap-4 text-sm">
+                                {/* Photo Count */}
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                                        <ImageIcon className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-foreground">{album.totalPhotos}</p>
+                                        <p className="text-xs text-muted-foreground">Photos</p>
+                                    </div>
+                                </div>
+
+                                {/* Divider */}
+                                {(album.shootDate || album.location) && (
+                                    <div className="h-8 w-px bg-border" />
+                                )}
+
+                                {/* Shoot Date */}
+                                {album.shootDate && (
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10">
+                                            <Calendar className="h-4 w-4 text-blue-500" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-foreground">
+                                                {format(new Date(album.shootDate), 'MMM d, yyyy')}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">Shoot Date</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Location */}
+                                {album.location && (
+                                    <>
+                                        {album.shootDate && <div className="h-8 w-px bg-border" />}
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/10">
+                                                <MapPin className="h-4 w-4 text-green-500" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-foreground">{album.location}</p>
+                                                <p className="text-xs text-muted-foreground">Location</p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Expiration Warning */}
+                                {expiresAt && (
+                                    <>
+                                        <div className="h-8 w-px bg-border" />
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500/10">
+                                                <Calendar className="h-4 w-4 text-orange-500" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-orange-600">
+                                                    {format(new Date(expiresAt), 'MMM d, yyyy')}
+                                                </p>
+                                                <p className="text-xs text-orange-500">Expires</p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Photos Masonry Gallery */}
@@ -476,128 +585,22 @@ export default function SharedAlbumPage() {
                     )}
                 </div>
 
-                {/* Image Preview Modal */}
-                {imagePreview.isOpen && photos.length > 0 && (
-                    <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-                        style={{ margin: 0 }}>
-                        {/* Close Button */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-4 right-4 z-10 text-white hover:bg-white/10 h-10 w-10"
-                            onClick={closeImagePreview}
-                        >
-                            <X className="h-6 w-6" />
-                        </Button>
-
-                        {/* Image Counter */}
-                        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                            <span className="text-white text-sm font-medium">
-                                {imagePreview.currentIndex + 1} / {photos.length}
-                            </span>
-                        </div>
-
-                        {/* Navigation Buttons */}
-                        {photos.length > 1 && (
-                            <>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:bg-white/10 h-12 w-12"
-                                    onClick={goToPrevImage}
-                                >
-                                    <ChevronLeft className="h-8 w-8" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:bg-white/10 h-12 w-12"
-                                    onClick={goToNextImage}
-                                >
-                                    <ChevronRight className="h-8 w-8" />
-                                </Button>
-                            </>
-                        )}
-
-                        {/* Zoom Controls */}
-                        <div className="absolute bottom-4 right-4 z-10 flex gap-2">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-white hover:bg-white/10 h-10 w-10"
-                                onClick={handleZoomOut}
-                                disabled={imagePreview.zoom <= 0.5}
-                            >
-                                <ZoomOut className="h-5 w-5" />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-white hover:bg-white/10 px-3"
-                                onClick={handleResetZoom}
-                            >
-                                {Math.round(imagePreview.zoom * 100)}%
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-white hover:bg-white/10 h-10 w-10"
-                                onClick={handleZoomIn}
-                                disabled={imagePreview.zoom >= 3}
-                            >
-                                <ZoomIn className="h-5 w-5" />
-                            </Button>
-                        </div>
-
-                        {/* Image Info and Actions */}
-                        <div className="absolute bottom-4 left-4 z-10 max-w-md">
-                            <div className="bg-black/50 backdrop-blur-sm rounded-lg p-4 text-white">
-                                <h3 className="font-semibold text-sm mb-2">{photos[imagePreview.currentIndex]?.originalName}</h3>
-                                <div className="flex items-center gap-4 text-xs text-white/80">
-                                    {photos[imagePreview.currentIndex]?.favoritesCount > 0 && (
-                                        <span className="flex items-center gap-1">
-                                            <Heart className="h-3 w-3 fill-current text-red-500" />
-                                            {photos[imagePreview.currentIndex]?.favoritesCount}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex gap-2 mt-3">
-                                    {permissions?.canDownload && (
-                                        <Button
-                                            size="sm"
-                                            variant="secondary"
-                                            onClick={() => handleDownload(photos[imagePreview.currentIndex])}
-                                        >
-                                            <Download className="h-3 w-3 mr-1.5" />
-                                            Download
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Main Image Container */}
-                        <div className="relative w-full h-full flex items-center justify-center p-20 overflow-auto">
-                            <img
-                                src={photos[imagePreview.currentIndex]?.url || photos[imagePreview.currentIndex]?.thumbnailUrl}
-                                alt={photos[imagePreview.currentIndex]?.originalName}
-                                className="max-w-full max-h-full object-contain transition-transform duration-200"
-                                style={{
-                                    transform: `scale(${imagePreview.zoom})`,
-                                    cursor: imagePreview.zoom > 1 ? 'grab' : 'default'
-                                }}
-                                draggable={false}
-                            />
-                        </div>
-
-                        {/* Keyboard Shortcuts Info */}
-                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-                            <div className="bg-black/50 backdrop-blur-sm rounded-full px-4 py-1.5 text-white/60 text-xs">
-                                Use arrow keys to navigate • ESC to close • +/- to zoom
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* Image Preview Component */}
+                <ImagePreview
+                    isOpen={imagePreview.isOpen}
+                    currentIndex={imagePreview.currentIndex}
+                    photos={photos}
+                    permissions={permissions}
+                    clientId={clientId}
+                    token={token}
+                    photoFavorites={photoFavorites}
+                    photoComments={photoComments}
+                    onClose={closeImagePreview}
+                    onNavigate={handleNavigate}
+                    onDownload={handleDownload}
+                    onFavoriteToggle={handleFavoriteToggle}
+                    onAddComment={handleAddComment}
+                />
             </div>
         </div>
     );

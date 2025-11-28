@@ -407,6 +407,165 @@ export const shareApi = {
     }
     return response.json();
   },
+
+  // Save client identity
+  async saveClientIdentity(token: string, name: string, email?: string, clientIdentifier?: string): Promise<{
+    success: boolean;
+    clientId: string;
+    message: string;
+    isReturningClient?: boolean;
+  }> {
+    const response = await fetch(`/api/shared/${token}/client`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, email, clientIdentifier }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save identity');
+    }
+    return response.json();
+  },
+
+  // Track interaction
+  async trackInteraction(
+    token: string,
+    event: string,
+    data?: {
+      clientId?: string;
+      photoId?: string;
+      comment?: string;
+      meta?: Record<string, any>;
+    }
+  ): Promise<{ success: boolean; interactionId: string }> {
+    const response = await fetch(`/api/shared/${token}/interactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ event, ...data }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to track interaction');
+    }
+    return response.json();
+  },
+
+  // Toggle favorite
+  async toggleFavorite(
+    token: string,
+    photoId: string,
+    isFavorite: boolean,
+    clientId?: string
+  ): Promise<{
+    success: boolean;
+    isFavorite: boolean;
+    favoritesCount: number;
+  }> {
+    const response = await fetch(`/api/shared/${token}/favorite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ photoId, isFavorite, clientId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to toggle favorite');
+    }
+    return response.json();
+  },
+
+  // Add comment
+  async addComment(
+    token: string,
+    photoId: string,
+    comment: string,
+    clientId?: string
+  ): Promise<{
+    success: boolean;
+    comment: {
+      _id: string;
+      comment: string;
+      clientName: string;
+      createdAt: string;
+    };
+  }> {
+    const response = await fetch(`/api/shared/${token}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ photoId, comment, clientId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add comment');
+    }
+    return response.json();
+  },
+
+  // Get comments
+  async getComments(
+    token: string,
+    photoId?: string
+  ): Promise<{
+    comments: Array<{
+      _id: string;
+      comment: string;
+      photoId?: string;
+      photoName?: string;
+      clientName: string;
+      clientEmail?: string;
+      createdAt: string;
+    }>;
+    total: number;
+  }> {
+    const url = photoId
+      ? `/api/shared/${token}/comments?photoId=${photoId}`
+      : `/api/shared/${token}/comments`;
+
+    const response = await fetch(url, {
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get comments');
+    }
+    return response.json();
+  },
+
+  // Get interactions (photographer only)
+  async getInteractions(token: string): Promise<{
+    interactions: any[];
+    clients: any[];
+    eventSummary: any[];
+    photoAnalytics: any[];
+    totalInteractions: number;
+  }> {
+    // Get auth token from cookie
+    const authToken = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('token='))
+      ?.split('=')[1];
+
+    const response = await fetch(`/api/shared/${token}/interactions`, {
+      headers: {
+        ...(authToken && { Authorization: `Bearer ${authToken}` }),
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get interactions');
+    }
+    return response.json();
+  },
 };
 
 // Helper function to get image dimensions
