@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/db';
 import OTP from '@/lib/models/OTP';
 import User from '@/lib/models/User';
 

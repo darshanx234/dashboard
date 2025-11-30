@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth';
-import { hasRoleAccess, getDefaultHomePage } from '@/lib/role-access';
+import { hasRoleAccess, getDefaultHomePage } from '@/lib/auth/role-access';
 
 interface RoleProtectionProps {
   children: React.ReactNode;

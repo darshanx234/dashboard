@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/db';
 import OTP from '@/lib/models/OTP';
 import User from '@/lib/models/User';
-import { generateOTP, sendOTPEmail } from '@/lib/email';
+import { generateOTP, sendOTPEmail } from '@/lib/utils/email';
 
 // Rate limiting: Store last OTP send time in memory (in production, use Redis)
 const otpRateLimits = new Map<string, number>();

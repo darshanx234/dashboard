@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import connectDB from '@/lib/mongodb';
+import connectDB from '@/lib/db';
 import Album from '@/lib/models/Album';
 import AlbumShare from '@/lib/models/AlbumShare';
 import crypto from 'crypto';

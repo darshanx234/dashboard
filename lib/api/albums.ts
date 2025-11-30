@@ -1,4 +1,4 @@
-import { getWithAuth, postWithAuth, putWithAuth, deleteWithAuth } from '../api-client';
+import { getWithAuth, postWithAuth, putWithAuth, deleteWithAuth } from '@/lib/utils/api-client';
 
 // Types
 export interface Album {

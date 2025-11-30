@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import connectDB from '@/lib/mongodb';
-import { generatePresignedUploadUrl, generateS3Key } from '@/lib/s3';
+import connectDB from '@/lib/db';
+import { generatePresignedUploadUrl, generateS3Key } from '@/lib/utils/s3';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 

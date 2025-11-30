@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import connectDB from '@/lib/mongodb';
+import connectDB from '@/lib/db';
 import Album from '@/lib/models/Album';
 import Photo from '@/lib/models/Photo';
-import { generatePresignedDownloadUrl, deleteFromS3 } from '@/lib/s3';
+import { generatePresignedDownloadUrl, deleteFromS3 } from '@/lib/utils/s3';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 

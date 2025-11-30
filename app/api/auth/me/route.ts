@@ -1,7 +1,7 @@
 
-import { verifyToken } from '@/lib/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/db';
 import User from '@/lib/models/User';
 
 export async function GET(request: NextRequest) {

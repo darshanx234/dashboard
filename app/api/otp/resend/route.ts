@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/db';
 import OTP from '@/lib/models/OTP';
-import { generateOTP, sendOTPEmail } from '@/lib/email';
+import { generateOTP, sendOTPEmail } from '@/lib/utils/email';
 
 const RESEND_COOLDOWN = 60 * 1000; // 60 seconds between resends
 const OTP_EXPIRY_MINUTES = 10;

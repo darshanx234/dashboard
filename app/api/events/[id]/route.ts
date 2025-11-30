@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import connectDB from '@/lib/mongodb';
+import connectDB from '@/lib/db';
 import Event from '@/lib/models/Event';
 import Client from '@/lib/models/Client';
 
@@ -155,7 +155,7 @@ export async function DELETE(
         const event = await Event.findOneAndDelete({
             _id: id,
             photographerId: decoded.userId,
-        });
+        }).lean();
 
         if (!event) {
             return NextResponse.json({ error: 'Event not found' }, { status: 404 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
+import connectDB from '@/lib/db';
 import AlbumShare from '@/lib/models/AlbumShare';
 import AlbumShareClient from '@/lib/models/AlbumShareClient';
 import AlbumShareInteraction from '@/lib/models/AlbumShareInteraction';

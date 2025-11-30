@@ -7,7 +7,7 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/store/auth';
-import { getSidebarMenu } from '@/lib/sidebar-config';
+import { getSidebarMenu } from '@/lib/utils/sidebar-config';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface SidebarProps {

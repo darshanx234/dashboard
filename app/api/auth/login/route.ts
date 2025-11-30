@@ -1,9 +1,9 @@
 
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/db';
 import User from '@/lib/models/User';
 import OTP from '@/lib/models/OTP';
-import { generateToken } from '@/lib/jwt';
-import { generateOTP, sendOTPEmail } from '@/lib/email';
+import { generateToken } from '@/lib/auth/jwt';
+import { generateOTP, sendOTPEmail } from '@/lib/utils/email';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {

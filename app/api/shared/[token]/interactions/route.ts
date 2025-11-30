@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
+import connectDB from '@/lib/db';
 import AlbumShare from '@/lib/models/AlbumShare';
 import AlbumShareInteraction from '@/lib/models/AlbumShareInteraction';
-import { verifyToken } from '@/lib/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
 
 // POST - Track interaction
 export async function POST(
