@@ -11,7 +11,7 @@ import Link from 'next/link';
 export default function VerifyOTPPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const email = searchParams.get('email') || '';
   const purpose = searchParams.get('purpose') || 'email-verification';
   const redirect = searchParams.get('redirect') || '/';
@@ -22,7 +22,7 @@ export default function VerifyOTPPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
-  
+
   // Countdown timer for resend
   const [resendCooldown, setResendCooldown] = useState(0);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
@@ -108,11 +108,11 @@ export default function VerifyOTPPage() {
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').trim();
-    
+
     if (/^\d{6}$/.test(pastedData)) {
       const newOtp = pastedData.split('');
       setOtp(newOtp);
-      
+
       // Focus last input
       const lastInput = document.getElementById('otp-5');
       if (lastInput) {
@@ -140,7 +140,7 @@ export default function VerifyOTPPage() {
 
       if (!response.ok) {
         setError(data.error || 'Verification failed');
-        
+
         if (data.remainingAttempts !== undefined) {
           setRemainingAttempts(data.remainingAttempts);
         }
@@ -151,7 +151,7 @@ export default function VerifyOTPPage() {
         if (firstInput) {
           (firstInput as HTMLInputElement).focus();
         }
-        
+
         setLoading(false);
         return;
       }
@@ -159,7 +159,7 @@ export default function VerifyOTPPage() {
       // Success
       setSuccess(true);
       setError('');
-      
+
       // Store reset token if password reset
       if (data.resetToken) {
         sessionStorage.setItem('resetToken', data.resetToken);
@@ -204,11 +204,11 @@ export default function VerifyOTPPage() {
 
       if (!response.ok) {
         setError(data.error || 'Failed to resend OTP');
-        
+
         if (data.retryAfter) {
           setResendCooldown(data.retryAfter);
         }
-        
+
         setResendLoading(false);
         return;
       }
@@ -220,7 +220,7 @@ export default function VerifyOTPPage() {
 
       // Set cooldown
       setResendCooldown(data.cooldown || 60);
-      
+
       // Clear previous OTP
       setOtp(['', '', '', '', '', '']);
       setRemainingAttempts(null);
@@ -230,7 +230,7 @@ export default function VerifyOTPPage() {
       const successMsg = document.createElement('div');
       successMsg.textContent = 'OTP sent successfully!';
       successMsg.className = 'text-green-600 text-sm font-medium';
-      
+
     } catch (error) {
       setError('Network error. Please try again.');
     } finally {
@@ -293,14 +293,9 @@ export default function VerifyOTPPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="">
+      <Card className="w-full max-w-md border-0 shadow-none">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
-              <Mail className="h-6 w-6 text-white" />
-            </div>
-          </div>
           <CardTitle className="text-2xl text-center">{title}</CardTitle>
           <CardDescription className="text-center">{description}</CardDescription>
           <div className="pt-2 text-center">
@@ -320,21 +315,6 @@ export default function VerifyOTPPage() {
             </Alert>
           )}
 
-          {/* Error Message */}
-          {error && !success && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {error}
-                {remainingAttempts !== null && remainingAttempts > 0 && (
-                  <span className="block mt-1 text-sm">
-                    {remainingAttempts} attempt{remainingAttempts !== 1 ? 's' : ''} remaining
-                  </span>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
           {/* OTP Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-center block">
@@ -342,18 +322,20 @@ export default function VerifyOTPPage() {
             </label>
             <div className="flex gap-2 justify-center" onPaste={handlePaste}>
               {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  id={`otp-${index}`}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  disabled={loading || success}
-                  className="w-12 h-12 text-center text-lg font-bold border rounded-md focus:ring-2 focus:ring-purple-600 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                />
+                <div>
+                  <input
+                    key={index}
+                    id={`otp-${index}`}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    disabled={loading || success}
+                    className="w-12 h-12 text-center text-lg font-bold border rounded-md focus:ring-2 focus:ring-purple-600 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -389,7 +371,20 @@ export default function VerifyOTPPage() {
             </Button>
           </div>
         </CardContent>
-
+        {/* Error Message */}
+        {error && !success && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+              {remainingAttempts !== null && remainingAttempts > 0 && (
+                <span className="block mt-1 text-sm">
+                  {remainingAttempts} attempt{remainingAttempts !== 1 ? 's' : ''} remaining
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
         <CardFooter>
           <Button variant="ghost" asChild className="w-full">
             <Link href="/login">

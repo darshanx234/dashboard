@@ -23,15 +23,15 @@ function getTransporter(): nodemailer.Transporter {
   const emailPassword = process.env.EMAIL_PASSWORD;
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = process.env.SMTP_PORT;
-  const smtpUser = process.env.SMTP_USER;
+  const smtpUser = process.env.EMAIL_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
 
   // Use SMTP configuration if provided
-  if (smtpHost && smtpPort && smtpUser && smtpPassword) {
+  if (smtpHost && smtpPort && smtpUser && smtpPassword && false) {
     console.log(`📧 Email Service: SMTP (${smtpHost}:${smtpPort})`);
     transporter = nodemailer.createTransport({
       host: smtpHost,
-      port: parseInt(smtpPort),
+      port: parseInt(smtpPort!),
       secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
       auth: {
         user: smtpUser,
@@ -51,7 +51,7 @@ function getTransporter(): nodemailer.Transporter {
     });
   }
   // Use other services
-  else if (emailService && fromEmail && emailPassword) {
+  else if (emailService && fromEmail && emailPassword && false) {
     console.log(`📧 Email Service: ${emailService}`);
     transporter = nodemailer.createTransport({
       service: emailService,
@@ -77,13 +77,10 @@ function getTransporter(): nodemailer.Transporter {
   return transporter as nodemailer.Transporter;
 }
 
-/**
- * Generate a 6-digit OTP
- */
-export function generateOTP(): string {
-  // return Math.floor(100000 + Math.random() * 900000).toString();
-  return '121212'
+export function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit
 }
+
 
 /**
  * Send email using Nodemailer

@@ -2,14 +2,17 @@ import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
-  email: string;
-  password: string;
+  phone: string; // Now required and primary identifier
+  email?: string; // Optional
+  password?: string; // Optional (can be set later)
   firstName?: string;
   lastName?: string;
+  fullName?: string; // Full name of the user
+  businessName?: string; // For studio owners
   avatar?: string;
-  phone?: string;
   bio?: string;
-  role: 'photographer' | 'client' | 'admin';
+  userType: 'photographer' | 'studio_owner'; // Type of user
+  role: 'photographer' | 'client' | 'admin'; // Permission role
   isVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -17,24 +20,37 @@ export interface IUser extends Document {
 }
 
 const userSchema = new Schema({
+  phone: {
+    type: String,
+    required: [true, 'Please provide a phone number'],
+    unique: true,
+    match: [/^[6-9]\d{9}$/, 'Please provide a valid Indian phone number'],
+  },
   email: {
     type: String,
-    required: [true, 'Please provide an email'],
     unique: true,
+    sparse: true, // Allows multiple null values
     lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email'],
   },
   password: {
     type: String,
-    required: [true, 'Please provide a password'],
-    minlength: 6,
+    minlength: [6, 'Password must be at least 6 characters'],
     select: false,
+    validate: {
+      validator: function(v: string) {
+        // Only validate if password is provided
+        if (!v) return true;
+        return v.length >= 6;
+      },
+      message: 'Password must be at least 6 characters'
+    }
   },
-  firstName: {
+  fullName: {
     type: String,
     default: '',
   },
-  lastName: {
+  businessName: {
     type: String,
     default: '',
   },
@@ -42,13 +58,14 @@ const userSchema = new Schema({
     type: String,
     default: null,
   },
-  phone: {
-    type: String,
-    default: '',
-  },
   bio: {
     type: String,
     default: '',
+  },
+  userType: {
+    type: String,
+    enum: ['photographer', 'studio_owner'],
+    required: [true, 'Please specify user type'],
   },
   role: {
     type: String,
@@ -69,9 +86,9 @@ const userSchema = new Schema({
   },
 });
 
-// Hash password before saving
+// Hash password before saving (only if password exists)
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return;
   }
 

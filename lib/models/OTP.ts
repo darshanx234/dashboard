@@ -1,7 +1,8 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export interface IOTP extends Document {
-  email: string;
+  email?: string;
+  phone?: string;
   otp: string;
   purpose: 'signup' | 'login' | 'password-reset' | 'email-verification';
   verified: boolean;
@@ -15,8 +16,11 @@ const OTPSchema = new Schema<IOTP>(
   {
     email: {
       type: String,
-      required: true,
       lowercase: true,
+      trim: true,
+    },
+    phone: {
+      type: String,
       trim: true,
     },
     otp: {
@@ -48,7 +52,7 @@ const OTPSchema = new Schema<IOTP>(
 );
 
 // Index for faster queries
-OTPSchema.index({ email: 1, purpose: 1, verified: 1 });
+OTPSchema.index({ email: 1, phone: 1, purpose: 1, verified: 1 });
 OTPSchema.index({ expiresAt: 1 });
 
 const OTP: Model<IOTP> = mongoose.models.OTP || mongoose.model<IOTP>('OTP', OTPSchema);

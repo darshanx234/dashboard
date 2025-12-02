@@ -5,13 +5,15 @@ const JWT_EXPIRE = (process.env.JWT_EXPIRE || '7d') as string;
 
 export interface JWTPayload extends JwtPayload {
   userId: string;
-  email: string;
+  email?: string;
+  phone?: string;
   role?: 'photographer' | 'client' | 'admin';
 }
 
 export function generateToken(payload: { 
   userId: string; 
-  email: string;
+  email?: string;
+  phone?: string;
   role?: 'photographer' | 'client' | 'admin';
 }): string {
   const options: SignOptions = {
