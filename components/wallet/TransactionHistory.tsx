@@ -14,6 +14,8 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCredits, formatAmountWithSign } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface Transaction {
     id: string;
@@ -87,26 +89,27 @@ export function TransactionHistory({ className, limit = 20 }: TransactionHistory
         ).join(' ');
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffInMs = now.getTime() - date.getTime();
-        const diffInHours = diffInMs / (1000 * 60 * 60);
+    const formatDateTime = (dateString: string) => {
+        // const date = new Date(dateString);
+        // const now = new Date();
+        // const diffInMs = now.getTime() - date.getTime();
+        // const diffInHours = diffInMs / (1000 * 60 * 60);
 
-        if (diffInHours < 24) {
-            return date.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } else if (diffInHours < 48) {
-            return 'Yesterday';
-        } else {
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-            });
-        }
+        // if (diffInHours < 24) {
+        //     return date.toLocaleTimeString('en-US', {
+        //         hour: '2-digit',
+        //         minute: '2-digit'
+        //     });
+        // } else if (diffInHours < 48) {
+        //     return 'Yesterday';
+        // } else {
+        //     return date.toLocaleDateString('en-US', {
+        //         month: 'short',
+        //         day: 'numeric',
+        //         year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        //     });
+        // }
+        return format(new Date(dateString), 'dd MMM yyyy hh:mm:ss a');
     };
 
     if (loading && transactions.length === 0) {
@@ -153,8 +156,8 @@ export function TransactionHistory({ className, limit = 20 }: TransactionHistory
     }
 
     return (
-        <Card className={cn('overflow-hidden shadow-lg', className)}>
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
+        <Card className={cn('overflow-hidden shadow-none py-0', className)}>
+            <CardHeader className="border-b pt-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="text-2xl font-bold">Transaction History</CardTitle>
@@ -212,11 +215,25 @@ export function TransactionHistory({ className, limit = 20 }: TransactionHistory
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2 mb-1">
                                             <div>
-                                                <p className="font-semibold text-gray-900 truncate">
+                                                <p className="flex items-center gap-2 font-semibold text-gray-900 truncate">
                                                     {transaction.description}
+                                                    <div className="capitalize flex items-center gap-4 text-xs text-gray-500">
+                                                        <div className={cn(
+                                                            'px-2 py-0.5 rounded-full text-xs font-medium',
+                                                            transaction.status === 'completed' && 'bg-green-100 text-green-700',
+                                                            transaction.status === 'pending' && 'bg-yellow-100 text-yellow-700',
+                                                            transaction.status === 'failed' && 'bg-red-100 text-red-700'
+                                                        )}>
+                                                            {(transaction.status)}
+                                                        </div>
+                                                    </div>
                                                 </p>
+                                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                    <Calendar className="h-3 w-3" />
+                                                    <span>{formatDateTime(transaction.createdAt)}</span>
+                                                </div>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <Badge
+                                                    {/* <Badge
                                                         variant="outline"
                                                         className={cn('text-xs font-medium', getCategoryColor(transaction.category))}
                                                     >
@@ -226,7 +243,7 @@ export function TransactionHistory({ className, limit = 20 }: TransactionHistory
                                                         <span className="text-xs text-gray-500 truncate">
                                                             {transaction.metadata.albumTitle}
                                                         </span>
-                                                    )}
+                                                    )} */}
                                                 </div>
                                             </div>
                                             <div className="text-right flex-shrink-0">
@@ -234,26 +251,11 @@ export function TransactionHistory({ className, limit = 20 }: TransactionHistory
                                                     'text-lg font-bold',
                                                     transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
                                                 )}>
-                                                    {transaction.type === 'credit' ? '+' : '-'}{transaction.amount}
+                                                    {formatAmountWithSign(transaction.amount, transaction.type)}
                                                 </p>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Balance: {transaction.balanceAfter}
+                                                <p className="text-xs text-gray-500">
+                                                    Balance: {formatCredits(transaction.balanceAfter)}
                                                 </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                <span>{formatDate(transaction.createdAt)}</span>
-                                            </div>
-                                            <div className={cn(
-                                                'px-2 py-0.5 rounded-full text-xs font-medium',
-                                                transaction.status === 'completed' && 'bg-green-100 text-green-700',
-                                                transaction.status === 'pending' && 'bg-yellow-100 text-yellow-700',
-                                                transaction.status === 'failed' && 'bg-red-100 text-red-700'
-                                            )}>
-                                                {transaction.status}
                                             </div>
                                         </div>
                                     </div>

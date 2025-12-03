@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Wallet, Plus, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 
 interface WalletWidgetProps {
@@ -64,7 +64,7 @@ export function WalletWidget({ className, showAddButton = true }: WalletWidgetPr
                             'text-lg font-bold leading-none',
                             balance < 50 ? 'text-red-600' : 'text-primary'
                         )}>
-                            ₹{balance.toLocaleString()}
+                            {formatCurrency(balance, { showSymbol: true })}
                         </span>
                     </div>
                 </div>

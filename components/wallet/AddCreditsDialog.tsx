@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Coins } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { formatCredits } from '@/lib/utils';
 
 interface AddCreditsDialogProps {
     open: boolean;
@@ -22,7 +23,7 @@ interface AddCreditsDialogProps {
     onSuccess?: () => void;
 }
 
-const PRESET_AMOUNTS = [50, 100, 200, 500, 1000];
+const PRESET_AMOUNTS = [500, 1000, 2000, 5000];
 
 export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDialogProps) {
     const [amount, setAmount] = useState<number>(100);
@@ -87,10 +88,10 @@ export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDi
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px] h-screen">
+            <DialogContent className="sm:max-w-[500px] max-h-screen overflow-y-auto">
                 <DialogHeader>
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-3 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl text-white">
+                        <div className="p-3 bg-primary rounded-xl text-white">
                             <Coins className="h-6 w-6" />
                         </div>
                         <div>
@@ -102,7 +103,7 @@ export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDi
                     </div>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Preset Amounts */}
                     <div>
                         <Label className="text-sm font-semibold text-gray-700 mb-3 block">
@@ -117,10 +118,10 @@ export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDi
                                     onClick={() => handlePresetClick(preset)}
                                     className={cn(
                                         'font-semibold transition-all duration-200',
-                                        amount === preset && 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                                        amount === preset && 'bg-primary'
                                     )}
                                 >
-                                    {preset}
+                                    {formatCurrency(preset)}
                                 </Button>
                             ))}
                         </div>
@@ -147,9 +148,6 @@ export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDi
                                 <Coins className="h-5 w-5" />
                             </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                            Each album creation costs 10 credits
-                        </p>
                     </div>
 
                     {/* Description */}
@@ -179,16 +177,12 @@ export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDi
                     )}
 
                     {/* Summary */}
-                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border-2 border-purple-200">
-                        <div className="flex items-center justify-between mb-2">
+                    <div className="rounded-xl">
+                        <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">Credits to add:</span>
-                            <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                                {amount.toLocaleString()}
+                            <span className="text-2xl font-bold text-primary">
+                                {formatCredits(amount)}
                             </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-gray-600">
-                            <span>Albums you can create:</span>
-                            <span className="font-semibold">~{Math.floor(amount / 10)}</span>
                         </div>
                     </div>
 
@@ -204,7 +198,7 @@ export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDi
                         <Button
                             type="submit"
                             disabled={loading || amount <= 0 || !description.trim()}
-                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold min-w-[120px]"
+                            className=""
                         >
                             {loading ? (
                                 <>
@@ -213,7 +207,6 @@ export function AddCreditsDialog({ open, onOpenChange, onSuccess }: AddCreditsDi
                                 </>
                             ) : (
                                 <>
-                                    <Plus className="h-4 w-4 mr-2" />
                                     Add Credits
                                 </>
                             )}

@@ -60,8 +60,8 @@ export default function WalletPage() {
                                 />
 
                                 {/* Info Cards */}
-                                <div className="mt-6 space-y-4">
-                                    <div className="bg-white rounded-xl p-4 border-2 border-purple-100 shadow-sm">
+                                <div className="mt-4 space-y-4">
+                                    <div className="bg-white rounded-xl p-4 border">
                                         <h3 className="font-semibold text-gray-900 mb-2">💡 How it works</h3>
                                         <ul className="text-sm text-gray-600 space-y-1">
                                             <li>• Get 300 credits on signup</li>
@@ -71,7 +71,7 @@ export default function WalletPage() {
                                         </ul>
                                     </div>
 
-                                    <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
+                                    <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-4 text-white">
                                         <h3 className="font-semibold mb-2">🎁 Need more credits?</h3>
                                         <p className="text-sm text-purple-100 mb-3">
                                             Add credits to continue creating amazing albums for your clients
