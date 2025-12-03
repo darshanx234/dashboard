@@ -7,6 +7,7 @@ import { Menu, Search, Bell, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/lib/store/auth';
+import { WalletWidget } from '@/components/wallet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
 
+  console.log(user);
   const handleLogout = async () => {
     try {
       await logout();
@@ -63,6 +65,12 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {user?.role == 'photographer' && (
+          <div className="mr-2 hidden sm:block">
+            <WalletWidget />
+          </div>
+        )}
+
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />

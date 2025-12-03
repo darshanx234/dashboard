@@ -10,6 +10,7 @@ import {
   Building2,
   User,
   Calendar,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -42,12 +43,12 @@ export const sidebarConfig: SidebarConfig = {
       icon: ImageIcon,
       description: 'Create, manage, upload photos',
     },
-    {
-      title: 'Analytics',
-      href: '/analytics',
-      icon: BarChart3,
-      description: 'Views, downloads, favorites tracking',
-    },
+    // {
+    //   title: 'Analytics',
+    //   href: '/analytics',
+    //   icon: BarChart3,
+    //   description: 'Views, downloads, favorites tracking',
+    // },
     {
       title: 'Clients',
       href: '/clients',
@@ -65,6 +66,12 @@ export const sidebarConfig: SidebarConfig = {
       href: '/documents',
       icon: FileText,
       description: 'Invoices, agreements',
+    },
+    {
+      title: 'Wallet',
+      href: '/wallet',
+      icon: Wallet,
+      description: 'Manage credits and transactions',
     },
     {
       title: 'Settings',

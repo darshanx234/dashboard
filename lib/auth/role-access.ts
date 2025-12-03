@@ -15,7 +15,8 @@ const roleRoutes = {
     '/documents',
     '/settings',
     '/profile',
-    '/calendar'
+    '/calendar',
+    '/wallet'
   ],
   client: [
     '/my-albums',

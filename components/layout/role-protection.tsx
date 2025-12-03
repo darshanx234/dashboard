@@ -34,7 +34,7 @@ export function RoleProtection({ children }: RoleProtectionProps) {
     // Check if user has access to current route
     if (!hasRoleAccess(pathname, userRole)) {
       console.log(`Access denied to ${pathname} for role: ${userRole}`);
-      
+
       // Redirect to role-appropriate home page
       const homePage = getDefaultHomePage(userRole);
       console.log(homePage, "home");

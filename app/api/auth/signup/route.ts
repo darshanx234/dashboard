@@ -3,6 +3,7 @@ import User, { IUser } from '@/lib/models/User';
 import OTP from '@/lib/models/OTP';
 import { generateToken } from '@/lib/auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
+import { WalletService } from '@/lib/services/wallet.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -138,6 +139,17 @@ export async function POST(request: NextRequest) {
 
     // Create new user
     const user = await User.create(userData) as IUser;
+
+    // Create wallet with 300 credits signup bonus
+    try {
+      await WalletService.createWallet({
+        userId: user._id,
+        initialBalance: 300,
+      });
+    } catch (walletError) {
+      console.error('Error creating wallet:', walletError);
+      // Continue even if wallet creation fails - user is already created
+    }
 
     // Generate token
     const token = generateToken({

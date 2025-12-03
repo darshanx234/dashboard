@@ -4,8 +4,10 @@ import connectDB from '@/lib/db';
 import Album from '@/lib/models/Album';
 import User from '@/lib/models/User';
 import { generatePresignedDownloadUrl } from '@/lib/utils/s3';
+import { WalletService } from '@/lib/services/wallet.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const ALBUM_CREATION_COST = 10; // Credits required to create an album
 
 // GET /api/albums - Get all albums for the logged-in photographer
 export async function GET(request: NextRequest) {
@@ -107,6 +109,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only photographers can create albums' }, { status: 403 });
     }
 
+    // Check if user has sufficient credits
+    const hasSufficientCredits = await WalletService.hasSufficientCredits(
+      decoded.userId,
+      ALBUM_CREATION_COST
+    );
+
+    if (!hasSufficientCredits) {
+      const balance = await WalletService.getBalance(decoded.userId);
+      return NextResponse.json(
+        {
+          error: 'Insufficient credits',
+          message: `You need ${ALBUM_CREATION_COST} credits to create an album. Current balance: ${balance} credits.`,
+          required: ALBUM_CREATION_COST,
+          current: balance,
+        },
+        { status: 402 } // 402 Payment Required
+      );
+    }
+
     // Create album
     const album = await Album.create({
       title: body.title,
@@ -122,6 +143,23 @@ export async function POST(request: NextRequest) {
       allowFavorites: body.allowFavorites !== false,
       status: 'draft',
     });
+
+    // Deduct credits after successful album creation
+    try {
+      await WalletService.deductCredits({
+        userId: decoded.userId,
+        amount: ALBUM_CREATION_COST,
+        category: 'album_creation',
+        description: `Album created: ${album.title}`,
+        metadata: {
+          albumId: album._id,
+          albumTitle: album.title,
+        },
+      });
+    } catch (creditError) {
+      console.error('Error deducting credits:', creditError);
+      // Album is already created, log the error but don't fail the request
+    }
 
     return NextResponse.json({
       message: 'Album created successfully',

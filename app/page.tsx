@@ -1,7 +1,56 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/lib/store/auth';
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
 export default function Home() {
+  const router = useRouter();
+  const { user, checkAuth, loading: authLoading } = useAuthStore();
+  const [isChecking, setIsChecking] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const verifyAuth = async () => {
+      await checkAuth();
+      setIsChecking(false);
+    };
+
+    verifyAuth();
+  }, [checkAuth]);
+
+  // Redirect if user is logged in
+  useEffect(() => {
+    if (!isChecking && user) {
+      // Determine dashboard based on role
+      const getDashboard = () => {
+        switch (user.role) {
+          case 'photographer':
+            return '/dashboard';
+          case 'client':
+            return '/client-dashboard';
+          case 'admin':
+            return '/admin';
+          default:
+            return '/dashboard';
+        }
+      };
+
+      router.push(getDashboard());
+    }
+  }, [user, isChecking, router]);
+
+  // Show loading state while checking auth
+  if (isChecking || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
