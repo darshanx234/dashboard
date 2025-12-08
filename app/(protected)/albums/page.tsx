@@ -54,7 +54,7 @@ export default function AlbumsPage() {
   };
 
   const handleAlbumUpdated = (updatedAlbum: Album) => {
-    setAlbums(albums.map(album => 
+    setAlbums(albums.map(album =>
       album._id === updatedAlbum._id ? updatedAlbum : album
     ));
   };
@@ -122,7 +122,7 @@ export default function AlbumsPage() {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid gap-4 md:grid-cols-4">
+        {/* <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Albums</CardDescription>
@@ -147,10 +147,10 @@ export default function AlbumsPage() {
               <CardTitle className="text-3xl">{loading ? '...' : stats.totalViews}</CardTitle>
             </CardHeader>
           </Card>
-        </div>
+        </div> */}
 
         {/* View Toggle */}
-        <div className="flex items-center justify-between">
+        {/* <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm">
               <Grid3x3 className="mr-2 h-4 w-4" />
@@ -175,7 +175,7 @@ export default function AlbumsPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </div> */}
 
         {/* Albums Grid */}
         {loading ? (

@@ -8,6 +8,7 @@ export interface Album {
   photographerId: string;
   photographerName: string;
   photographerEmail: string;
+  eventType?: string;
   coverPhoto?: string;
   shootDate?: string;
   location?: string;
@@ -59,12 +60,14 @@ export interface Photo {
 export interface CreateAlbumData {
   title: string;
   description?: string;
+  eventType?: string;
   shootDate?: string;
   location?: string;
   isPrivate?: boolean;
   password?: string;
   allowDownloads?: boolean;
   allowFavorites?: boolean;
+  planId?: string;
 }
 
 export interface UpdateAlbumData extends CreateAlbumData {

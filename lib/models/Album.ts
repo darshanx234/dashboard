@@ -7,6 +7,7 @@ export interface IAlbum extends Document {
   photographerName: string;
   photographerEmail: string;
   clientId?: string;
+  eventType?: mongoose.Types.ObjectId;
   coverPhoto?: string; // S3 URL
   shootDate?: Date;
   location?: string;
@@ -18,6 +19,15 @@ export interface IAlbum extends Document {
   totalViews: number;
   totalDownloads: number;
   status: 'draft' | 'processing' | 'published' | 'archived';
+  // Plan-related fields
+  planId?: mongoose.Types.ObjectId;
+  planName: string;
+  planPrice: number; // Credits paid for this album
+  storageLimit: number; // Storage limit in bytes
+  storageLimitGB: number; // Storage limit in GB (for display)
+  storageUsed: number; // Current storage used in bytes
+  planExpiresAt: Date; // When the album plan expires
+  isExpired: boolean; // Computed: whether plan has expired
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,10 +57,15 @@ const AlbumSchema: Schema = new Schema(
     },
     photographerEmail: {
       type: String,
-      required: true,
+      // required: true,
     },
     clientId: {
       type: String,
+      index: true,
+    },
+    eventType: {
+      type: Schema.Types.ObjectId,
+      ref: 'EventType',
       index: true,
     },
     coverPhoto: {
@@ -95,6 +110,46 @@ const AlbumSchema: Schema = new Schema(
       type: String,
       enum: ['draft', 'processing', 'published', 'archived'],
       default: 'draft',
+    },
+    // Plan-related fields
+    planId: {
+      type: Schema.Types.ObjectId,
+      ref: 'AlbumPlan',
+      index: true,
+    },
+    planName: {
+      type: String,
+      required: [true, 'Plan name is required'],
+    },
+    planPrice: {
+      type: Number,
+      required: [true, 'Plan price is required'],
+      min: [0, 'Plan price cannot be negative'],
+    },
+    storageLimit: {
+      type: Number,
+      required: [true, 'Storage limit is required'],
+      min: [0, 'Storage limit cannot be negative'],
+    },
+    storageLimitGB: {
+      type: Number,
+      required: [true, 'Storage limit in GB is required'],
+      min: [0, 'Storage limit cannot be negative'],
+    },
+    storageUsed: {
+      type: Number,
+      default: 0,
+      min: [0, 'Storage used cannot be negative'],
+    },
+    planExpiresAt: {
+      type: Date,
+      required: [true, 'Plan expiry date is required'],
+      index: true,
+    },
+    isExpired: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
   },
   {

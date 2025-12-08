@@ -9,6 +9,8 @@ import {
     Info,
     MoreVertical,
     Download,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import { type Photo, type SharePermissions } from '@/lib/api/albums';
 import { PhotoFavoriteButton } from '@/components/shared/PhotoFavoriteButton';
@@ -20,12 +22,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Zoom, Keyboard } from 'swiper/modules';
-import type { Swiper as SwiperType } from 'swiper';
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/zoom';
 
 interface ImagePreviewProps {
     isOpen: boolean;
@@ -61,27 +57,39 @@ export function ImagePreview({
     onAddComment,
 }: ImagePreviewProps) {
     const [activeDrawer, setActiveDrawer] = useState<DrawerType>(null);
-    const [swiperInstance, setSwiperInstance] = useState<SwiperType | null>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(currentIndex);
+    const [zoom, setZoom] = useState(1);
+    const imageRef = useRef<HTMLImageElement>(null);
 
     const currentPhoto = photos[currentPhotoIndex];
 
     useEffect(() => {
         if (!isOpen) {
             setActiveDrawer(null);
+            setZoom(1);
         }
     }, [isOpen]);
 
     useEffect(() => {
-        if (swiperInstance && currentIndex !== currentPhotoIndex) {
-            swiperInstance.slideTo(currentIndex);
-        }
-    }, [currentIndex, swiperInstance]);
+        setCurrentPhotoIndex(currentIndex);
+    }, [currentIndex]);
 
-    const handleSlideChange = (swiper: SwiperType) => {
-        const newIndex = swiper.activeIndex;
-        setCurrentPhotoIndex(newIndex);
-        onNavigate(newIndex);
+    const handlePrevious = () => {
+        if (currentPhotoIndex > 0) {
+            const newIndex = currentPhotoIndex - 1;
+            setCurrentPhotoIndex(newIndex);
+            onNavigate(newIndex);
+            setZoom(1);
+        }
+    };
+
+    const handleNext = () => {
+        if (currentPhotoIndex < photos.length - 1) {
+            const newIndex = currentPhotoIndex + 1;
+            setCurrentPhotoIndex(newIndex);
+            onNavigate(newIndex);
+            setZoom(1);
+        }
     };
 
     // Keyboard Navigation
@@ -95,12 +103,16 @@ export function ImagePreview({
                 } else {
                     onClose();
                 }
+            } else if (e.key === 'ArrowLeft') {
+                handlePrevious();
+            } else if (e.key === 'ArrowRight') {
+                handleNext();
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, activeDrawer]);
+    }, [isOpen, activeDrawer, currentPhotoIndex]);
 
     if (!isOpen || !currentPhoto) return null;
 
@@ -158,42 +170,51 @@ export function ImagePreview({
                 </span>
             </div>
 
-            {/* Swiper Slider */}
-            <div className="w-full h-full">
-                <Swiper
-                    modules={[Navigation, Zoom, Keyboard]}
-                    navigation
-                    zoom={{
-                        maxRatio: 3,
-                        minRatio: 1,
-                    }}
-                    keyboard={{
-                        enabled: true,
-                    }}
-                    initialSlide={currentIndex}
-                    onSwiper={setSwiperInstance}
-                    onSlideChange={handleSlideChange}
-                    className="w-full h-full p-4"
-                    style={{
-                        '--swiper-navigation-color': '#fff',
-                        '--swiper-navigation-size': '24px',
+            {/* Image Display */}
+            <div className="w-full h-full relative flex items-center justify-center p-4">
+                {/* Previous Button */}
+                {currentPhotoIndex > 0 && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute left-4 z-10 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                        onClick={handlePrevious}
+                    >
+                        <ChevronLeft className="h-8 w-8" />
+                    </Button>
+                )}
 
+                {/* Image */}
+                <div className="w-full h-full flex items-center justify-center">
+                    <img
+                        ref={imageRef}
+                        src={currentPhoto.url || currentPhoto.thumbnailUrl}
+                        alt={currentPhoto.originalName}
+                        className="max-w-full max-h-full object-contain select-none transition-transform duration-200"
+                        style={{ transform: `scale(${zoom})` }}
+                        draggable={false}
+                        onClick={(e) => {
+                            // Toggle zoom on click
+                            if (zoom === 1) {
+                                setZoom(2);
+                            } else {
+                                setZoom(1);
+                            }
+                        }}
+                    />
+                </div>
 
-                    } as React.CSSProperties}
-                >
-                    {photos.map((photo, index) => (
-                        <SwiperSlide key={photo._id}>
-                            <div className="swiper-zoom-container w-full h-full flex items-center justify-center">
-                                <img
-                                    src={photo.url || photo.thumbnailUrl}
-                                    alt={photo.originalName}
-                                    className="max-w-full max-h-full object-contain select-none"
-                                    draggable={false}
-                                />
-                            </div>
-                        </SwiperSlide>
-                    ))}
-                </Swiper>
+                {/* Next Button */}
+                {currentPhotoIndex < photos.length - 1 && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-4 z-10 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                        onClick={handleNext}
+                    >
+                        <ChevronRight className="h-8 w-8" />
+                    </Button>
+                )}
             </div>
 
             {/* Bottom Right Action Buttons */}
@@ -320,17 +341,17 @@ export function ImagePreview({
                                     </div>
                                 )}
 
-                                {currentPhoto.size && (
+                                {currentPhoto.fileSize && (
                                     <div>
                                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Size</h3>
-                                        <p className="text-sm">{(currentPhoto.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        <p className="text-sm">{(currentPhoto.fileSize / 1024 / 1024).toFixed(2)} MB</p>
                                     </div>
                                 )}
 
-                                {currentPhoto.uploadedAt && (
+                                {currentPhoto.createdAt && (
                                     <div>
                                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Uploaded</h3>
-                                        <p className="text-sm">{format(new Date(currentPhoto.uploadedAt), 'PPpp')}</p>
+                                        <p className="text-sm">{format(new Date(currentPhoto.createdAt), 'PPpp')}</p>
                                     </div>
                                 )}
 

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/store/auth';
 import { getSidebarMenu } from '@/lib/utils/sidebar-config';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Image from 'next/image';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -57,10 +58,11 @@ export function AppSidebar({ isOpen, onToggle }: SidebarProps) {
           {/* Header */}
           <div className="flex h-16 items-center justify-between border-b border-border px-6">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+              {/* <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">P</span>
               </div>
-              <span className="font-semibold text-lg">PhotoAlumnus</span>
+              <span className="font-semibold text-lg">PhotoAlumnus</span> */}
+              <img src="/ShotsSpace6.png" alt="Logo" width="80%" />
             </div>
             <Button
               variant="ghost"
@@ -82,9 +84,9 @@ export function AppSidebar({ isOpen, onToggle }: SidebarProps) {
             ) : (
               <ul className="space-y-1">
                 {menuItems.map((item) => {
-                  const isActive = pathname === item.href || 
+                  const isActive = pathname === item.href ||
                     (item.href !== '/' && pathname.startsWith(item.href));
-                  
+
                   return (
                     <li key={item.href}>
                       <Link
