@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ErrorMessage, Formik, Form } from 'formik';
+import * as Yup from 'yup';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,30 +21,20 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { AlbumPlanSelector, AlbumPlan } from '@/components/shared/albums/album-plan-selector';
 
+
+
 export default function CreateAlbumPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [eventTypes, setEventTypes] = useState<Array<{ _id: string; eventtypename: string; id: string }>>([]);
   const [loadingEventTypes, setLoadingEventTypes] = useState(true);
 
   // Plan state
   const [plans, setPlans] = useState<AlbumPlan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [userBalance, setUserBalance] = useState<number>(0);
   const [loadingPlans, setLoadingPlans] = useState(true);
 
-  // Form state
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [eventType, setEventType] = useState('');
-  const [shootDate, setShootDate] = useState<Date>();
-  const [location, setLocation] = useState('');
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [hasPassword, setHasPassword] = useState(false);
-  const [password, setPassword] = useState('');
-  const [allowDownloads, setAllowDownloads] = useState(true);
-  const [allowFavorites, setAllowFavorites] = useState(true);
+
 
   // Fetch plans, wallet balance, and event types on component mount
   useEffect(() => {
@@ -62,9 +54,9 @@ export default function CreateAlbumPage() {
           setPlans(plansData.plans);
           // Auto-select recommended plan
           const recommended = plansData.plans.find((p: AlbumPlan) => p.isRecommended);
-          if (recommended) {
-            setSelectedPlanId(recommended._id);
-          }
+          // if (recommended) {
+          //   setFieldValue('planId', recommended._id);
+          // }
         }
 
         // Fetch wallet balance
@@ -88,111 +80,136 @@ export default function CreateAlbumPage() {
 
     fetchData();
   }, [toast]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!title.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Album title is required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!selectedPlanId) {
-      toast({
-        title: 'Error',
-        description: 'Please select an album plan',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { album } = await albumApi.createAlbum({
-        title: title.trim(),
-        description: description.trim() || undefined,
-        eventType: eventType || undefined,
-        shootDate: shootDate ? format(shootDate, 'yyyy-MM-dd') : undefined,
-        location: location.trim() || undefined,
-        isPrivate,
-        password: hasPassword && password ? password : undefined,
-        allowDownloads,
-        allowFavorites,
-        planId: selectedPlanId,
-      });
-
-      toast({
-        title: 'Success',
-        description: 'Album created successfully',
-      });
-
-      // Redirect to the album page to upload photos
-      router.push(`/albums/${album._id}`);
-    } catch (error: any) {
-      console.error('Create album error:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create album',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <AppLayout>
-      <form onSubmit={handleSubmit} className="mx-auto space-y-6">
-        {/* Header */}
-        <div className='flex justify-between items-center'>
-          <div>
-            <h1 className="text-3xl font-bold">Create New Album</h1>
-            <p className="text-muted-foreground mt-2">
-              Fill in the details below to create a new photo album
-            </p>
-          </div>
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-sm">
-            <Link href="/albums" className="text-muted-foreground hover:text-foreground flex items-center gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Albums
-            </Link>
-          </div>
-        </div>
+      <Formik
+        initialValues={{
+          title: '',
+          description: '',
+          eventType: '',
+          shootDate: undefined as Date | undefined,
+          location: '',
+          isPrivate: false,
+          hasPassword: false,
+          password: '',
+          allowDownloads: true,
+          allowFavorites: true,
+          planId: '',
+        }}
+        validationSchema={Yup.object({
+          title: Yup.string()
+            .required('Album title is required')
+            .min(3, 'Title must be at least 3 characters')
+            .max(100, 'Title must not exceed 100 characters')
+            .trim(),
+          description: Yup.string()
+            .max(500, 'Description must not exceed 500 characters')
+            .trim(),
+          eventType: Yup.string().required('Event type is required'),
+          shootDate: Yup.date().nullable().required('Event date is required'),
+          location: Yup.string()
+            .max(200, 'Location must not exceed 200 characters')
+            .trim(),
+          // isPrivate: Yup.boolean(),
+          // hasPassword: Yup.boolean(),
+          // password: Yup.string()
+          //   .when('hasPassword', {
+          //     is: true,
+          //     then: (schema) => schema
+          //       .required('Password is required when password protection is enabled')
+          //       .min(4, 'Password must be at least 4 characters')
+          //       .max(50, 'Password must not exceed 50 characters'),
+          //     otherwise: (schema) => schema.notRequired(),
+          //   }),
+          // allowDownloads: Yup.boolean(),
+          // allowFavorites: Yup.boolean(),
+          planId: Yup.string().required('Please select an album plan'),
+        })}
+        onSubmit={async (values, { setSubmitting }) => {
+          try {
+            const { album } = await albumApi.createAlbum({
+              title: values.title.trim(),
+              description: values.description.trim() || "",
+              eventType: values.eventType || "",
+              shootDate: values.shootDate ? format(values.shootDate, 'yyyy-MM-dd') : "",
+              location: values.location.trim() || "",
+              // isPrivate: values.isPrivate,
+              // password: values.hasPassword && values.password ? values.password : undefined,
+              // allowDownloads: values.allowDownloads,
+              // allowFavorites: values.allowFavorites,
+              planId: values.planId,
+            });
 
-        {/* Album Metadata Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <div className='text-green-700 w-10 h-10 bg-green-200 rounded-xl flex items-center justify-center'>
-                <Info />
-              </div>
-              Album Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Album Title */}
-            <div className="space-y-2 mt-5">
-              <Label htmlFor="title">
-                Album Title *</Label>
-              <Input
-                id="title"
-                placeholder="e.g., Wedding - Sarah & John"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                disabled={loading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Give your album a descriptive name
-              </p>
-            </div>
+            toast({
+              title: 'Success',
+              description: 'Album created successfully',
+            });
 
-            {/* Description */}
-            {/* <div className="space-y-2">
+            // Redirect to the album page to upload photos
+            router.push(`/albums/${album._id}`);
+          } catch (error: any) {
+            console.error('Create album error:', error);
+            toast({
+              title: 'Error',
+              description: error.message || 'Failed to create album',
+              variant: 'destructive',
+            });
+          } finally {
+            setSubmitting(false);
+          }
+        }}>
+        {({ values, setFieldValue, handleChange, handleBlur, isSubmitting }) => {
+          return (
+            <>
+              <Form>
+                {/* Header */}
+                <div className='flex justify-between items-center'>
+                  <div>
+                    <h1 className="text-lg xl:text-2xl font-bold">Create New Album</h1>
+                    <span className="text-sm text-muted-foreground mt-2">
+                      Fill in the details below to create a new photo album
+                    </span>
+                  </div>
+                  {/* Breadcrumb */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <Link href="/albums" className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+                      <ArrowLeft className="h-6 w-6" />
+                      <span className='hidden md:block'>Back to Albums</span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Album Metadata Form */}
+                <Card className='mt-4'>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2'>
+                      <div className='text-green-700 w-10 h-10 bg-green-200 rounded-xl flex items-center justify-center'>
+                        <Info />
+                      </div>
+                      Album Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Album Title */}
+                    <div className="space-y-2 mt-5">
+                      <Label htmlFor="title">
+                        Album Title *</Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        placeholder="e.g., Wedding - Sarah & John"
+                        value={values.title}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        disabled={isSubmitting}
+                      />
+                      <ErrorMessage component="div" name="title" className='text-red-500 text-xs' />
+                      <p className="text-xs text-muted-foreground">
+                        Give your album a descriptive name
+                      </p>
+                    </div>
+
+                    {/* Description */}
+                    {/* <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -206,197 +223,219 @@ export default function CreateAlbumPage() {
                 Optional: Provide context or notes about this album
               </p>
             </div> */}
-            {/* Date and Location Row */}
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* Event Date */}
-              <div className="space-y-2">
-                <Label htmlFor="date">Event Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                      disabled={loading}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {shootDate ? format(shootDate, 'PPP') : <span className="text-muted-foreground">Select date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={shootDate}
-                      onSelect={setShootDate}
-                      disabled={loading}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+                    {/* Date and Location Row */}
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {/* Event Date */}
+                      <div className="space-y-2">
+                        <Label htmlFor="date">Event Date</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                              disabled={isSubmitting}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {values.shootDate ? format(values.shootDate, 'PPP') : <span className="text-muted-foreground">Select date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={values.shootDate}
+                              onSelect={(date) => setFieldValue('shootDate', date)}
+                              disabled={isSubmitting}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <ErrorMessage component="div" name="shootDate" className='text-red-500 text-xs' />
+                      </div>
 
-              {/* Location */}
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="location"
-                    placeholder="e.g., Central Park, NY"
-                    className="pl-9"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    disabled={loading}
-                  />
+                      {/* Location */}
+                      <div className="space-y-2">
+                        <Label htmlFor="location">Location</Label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="location"
+                            name="location"
+                            placeholder="e.g., Central Park, NY"
+                            className="pl-9"
+                            value={values.location}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                        <ErrorMessage component="div" name="location" className='text-red-500 text-xs' />
+                      </div>
+
+                      {/* Event Type */}
+                      <div className="space-y-2">
+                        <Label htmlFor="eventType">Event Type</Label>
+                        <Select
+                          // value={values.eventType}
+                          onValueChange={(value) => setFieldValue('eventType', value)}
+                        // disabled={isSubmitting || loadingEventTypes}
+                        >
+                          <SelectTrigger id="eventType" className="w-full">
+                            <SelectValue placeholder={loadingEventTypes ? "Loading event types..." : "Select event type (optional)"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {eventTypes.map((type) => (
+                              <SelectItem key={type._id} value={type._id}>
+                                {type.eventtypename}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <ErrorMessage component="div" name="eventType" className='text-red-500 text-xs' />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Plan Selection */}
+                <Card className='mt-4'>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2'>
+                      <div className='w-10 h-10 bg-purple-200 text-purple-700 rounded-xl flex items-center justify-center'>
+                        <Wallet />
+                      </div>
+                      Select Album Plan *
+                    </CardTitle>
+                    {/* <CardDescription>
+                      Choose a plan based on your storage needs. Your wallet balance: ₹{userBalance}
+                    </CardDescription> */}
+                  </CardHeader>
+                  <CardContent className="mt-5">
+                    {loadingPlans ? (
+                      <div className="flex items-center justify-center p-12">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      </div>
+                    ) : (
+                      <>
+                        <AlbumPlanSelector
+                          plans={plans}
+                          selectedPlanId={values.planId}
+                          onSelectPlan={(planId) => setFieldValue('planId', planId)}
+                          userBalance={userBalance}
+                          disabled={isSubmitting}
+                        />
+                        <ErrorMessage component="div" name="planId" className='text-red-500 text-xs' />
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Privacy Settings */}
+                {false && <Card>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2'>
+                      <div className='w-10 h-10 bg-sky-200 text-sky-700 rounded-xl flex items-center justify-center'>
+                        <ShieldEllipsis />
+                      </div>
+                      Privacy & Sharing
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 mt-5">
+                    {/* Private/Public Toggle */}
+                    <div className='grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4'>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Private Album</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Only accessible via shared link
+                          </p>
+                        </div>
+                        <Switch
+                          checked={values.isPrivate}
+                          onCheckedChange={(checked) => setFieldValue('isPrivate', checked)}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      {/* Password Protection */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Password Protection</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Require password to access
+                            </p>
+                          </div>
+                          <Switch
+                            checked={values.hasPassword}
+                            onCheckedChange={(checked) => setFieldValue('hasPassword', checked)}
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                        {values.hasPassword && (
+                          <>
+                            <Input
+                              type="password"
+                              name="password"
+                              placeholder="Enter album password"
+                              value={values.password}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              disabled={isSubmitting}
+                            />
+                            <ErrorMessage component="div" name='password' className='text-red-500 text-xs' />
+                          </>
+                        )}
+                      </div>
+
+                      {/* Download Permission */}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Allow Downloads</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Let viewers download photos
+                          </p>
+                        </div>
+                        <Switch
+                          checked={values.allowDownloads}
+                          onCheckedChange={(checked) => setFieldValue('allowDownloads', checked)}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      {/* Favorites Feature */}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Enable Favorites</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Allow clients to mark favorite photos
+                          </p>
+                        </div>
+                        <Switch
+                          checked={values.allowFavorites}
+                          onCheckedChange={(checked) => setFieldValue('allowFavorites', checked)}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 mt-4 justify-end">
+
+                  <Button type="submit" size="lg" className="" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmitting ? 'Creating...' : 'Create Album & Upload Photos'}
+                  </Button>
+                  <Button type="button" size="lg" variant="outline" asChild disabled={isSubmitting}>
+                    <Link href="/albums">Cancel</Link>
+                  </Button>
                 </div>
-              </div>
-
-              {/* Event Type */}
-              <div className="space-y-2">
-                <Label htmlFor="eventType">Event Type</Label>
-                <Select value={eventType} onValueChange={setEventType} disabled={loading || loadingEventTypes} >
-                  <SelectTrigger id="eventType" className="w-full">
-                    <SelectValue placeholder={loadingEventTypes ? "Loading event types..." : "Select event type (optional)"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eventTypes.map((type) => (
-                      <SelectItem key={type._id} value={type._id}>
-                        {type.eventtypename}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Plan Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <div className='w-10 h-10 bg-purple-200 text-purple-700 rounded-xl flex items-center justify-center'>
-                <Wallet />
-              </div>
-              Select Album Plan *
-            </CardTitle>
-            <CardDescription>
-              Choose a plan based on your storage needs. Your wallet balance: ₹{userBalance}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="mt-5">
-            {loadingPlans ? (
-              <div className="flex items-center justify-center p-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <AlbumPlanSelector
-                plans={plans}
-                selectedPlanId={selectedPlanId}
-                onSelectPlan={setSelectedPlanId}
-                userBalance={userBalance}
-                disabled={loading}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Privacy Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <div className='w-10 h-10 bg-sky-200 text-sky-700 rounded-xl flex items-center justify-center'>
-                <ShieldEllipsis />
-              </div>
-              Privacy & Sharing
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 mt-5">
-            {/* Private/Public Toggle */}
-            <div className='grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4'>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Private Album</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Only accessible via shared link
-                  </p>
-                </div>
-                <Switch
-                  checked={isPrivate}
-                  onCheckedChange={setIsPrivate}
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Password Protection */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Password Protection</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Require password to access
-                    </p>
-                  </div>
-                  <Switch
-                    checked={hasPassword}
-                    onCheckedChange={setHasPassword}
-                    disabled={loading}
-                  />
-                </div>
-                {hasPassword && (
-                  <Input
-                    type="password"
-                    placeholder="Enter album password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                  />
-                )}
-              </div>
-
-              {/* Download Permission */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Allow Downloads</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Let viewers download photos
-                  </p>
-                </div>
-                <Switch
-                  checked={allowDownloads}
-                  onCheckedChange={setAllowDownloads}
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Favorites Feature */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Enable Favorites</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Allow clients to mark favorite photos
-                  </p>
-                </div>
-                <Switch
-                  checked={allowFavorites}
-                  onCheckedChange={setAllowFavorites}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <Button type="submit" size="lg" className="flex-1" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? 'Creating...' : 'Create Album & Upload Photos'}
-          </Button>
-          <Button type="button" size="lg" variant="outline" asChild disabled={loading}>
-            <Link href="/albums">Cancel</Link>
-          </Button>
-        </div>
-      </form>
-    </AppLayout>
+              </Form >
+            </>
+          )
+        }}
+      </Formik>
+    </AppLayout >
   );
 }

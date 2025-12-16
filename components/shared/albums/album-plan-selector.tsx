@@ -34,12 +34,12 @@ export function AlbumPlanSelector({
 }: AlbumPlanSelectorProps) {
     return (
         <div className="space-y-4">
-            <div>
+            {/* <div>
                 <h3 className="text-lg font-semibold mb-1">Select Album Plan</h3>
                 <p className="text-sm text-muted-foreground">
                     Choose a plan based on your storage needs. Your wallet balance: ₹{userBalance}
                 </p>
-            </div>
+            </div> */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {plans.map((plan) => {
@@ -48,10 +48,10 @@ export function AlbumPlanSelector({
                     const isDisabled = disabled || !canAfford;
 
                     return (
-                        <Card
+                        <div
                             key={plan._id}
                             className={cn(
-                                'relative cursor-pointer transition-all hover:shadow-lg',
+                                'rounded-xl p-4 border relative cursor-pointer transition-all hover:shadow-lg',
                                 isSelected && 'ring-2 ring-primary',
                                 isDisabled && 'opacity-50 cursor-not-allowed',
                                 !isDisabled && 'hover:border-primary'
@@ -67,59 +67,59 @@ export function AlbumPlanSelector({
                                 </div>
                             )}
 
-                            <CardContent className="p-6">
-                                <div className="space-y-4">
-                                    {/* Plan Header */}
-                                    <div>
-                                        <h4 className="text-xl font-bold">{plan.name}</h4>
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            {plan.description}
-                                        </p>
-                                    </div>
+                            {/* <CardContent className="p-4 border"> */}
+                            <div className="space-y-4">
+                                {/* Plan Header */}
+                                <div>
+                                    <h4 className="text-xl font-bold">{plan.name}</h4>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        {plan.description}
+                                    </p>
+                                </div>
 
-                                    {/* Price */}
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-3xl font-bold">₹{plan.price}</span>
-                                        <span className="text-sm text-muted-foreground">/year</span>
-                                    </div>
+                                {/* Price */}
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-3xl font-bold">₹{plan.price}</span>
+                                    {/* <span className="text-sm text-muted-foreground">/year</span> */}
+                                </div>
 
-                                    {/* Storage */}
-                                    <div className="py-3 px-4 bg-muted rounded-lg">
-                                        <div className="text-2xl font-bold text-center">
-                                            {plan.storageLimitGB} GB
-                                        </div>
-                                        <div className="text-xs text-center text-muted-foreground">
-                                            Storage Limit
-                                        </div>
+                                {/* Storage */}
+                                <div className="py-3 px-4 bg-muted rounded-lg">
+                                    <div className="text-2xl font-bold text-center">
+                                        {plan.storageLimitGB} GB
                                     </div>
+                                    <div className="text-xs text-center text-muted-foreground">
+                                        Storage Limit
+                                    </div>
+                                </div>
 
-                                    {/* Features */}
-                                    <ul className="space-y-2">
+                                {/* Features */}
+                                {/* <ul className="space-y-2">
                                         {plan.features.map((feature, index) => (
                                             <li key={index} className="flex items-start gap-2 text-sm">
                                                 <Check className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                                                 <span>{feature}</span>
                                             </li>
                                         ))}
-                                    </ul>
+                                    </ul> */}
 
-                                    {/* Insufficient Balance Warning */}
-                                    {!canAfford && (
-                                        <div className="text-xs text-red-600 font-medium">
-                                            Insufficient balance (Need ₹{plan.price - userBalance} more)
-                                        </div>
-                                    )}
+                                {/* Insufficient Balance Warning */}
+                                {!canAfford && (
+                                    <div className="text-xs text-red-600 font-medium">
+                                        Insufficient balance (Need ₹{plan.price - userBalance} more)
+                                    </div>
+                                )}
 
-                                    {/* Selected Indicator */}
-                                    {isSelected && (
-                                        <div className="flex items-center justify-center gap-2 text-sm font-medium text-primary">
-                                            <Check className="h-4 w-4" />
-                                            Selected
-                                        </div>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                {/* Selected Indicator */}
+                                {isSelected && (
+                                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-primary">
+                                        <Check className="h-4 w-4" />
+                                        Selected
+                                    </div>
+                                )}
+                            </div>
+                            {/* </CardContent> */}
+                        </div>
                     );
                 })}
             </div>

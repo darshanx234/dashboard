@@ -20,6 +20,15 @@ export interface Album {
   totalViews: number;
   totalDownloads: number;
   status: 'draft' | 'processing' | 'published' | 'archived';
+  // Plan-related fields
+  planId?: string;
+  planName?: string;
+  planPrice?: number;
+  storageLimit?: number;
+  storageLimitGB?: number;
+  storageUsed?: number;
+  planExpiresAt?: string;
+  isExpired?: boolean;
   createdAt: string;
   updatedAt: string;
 }

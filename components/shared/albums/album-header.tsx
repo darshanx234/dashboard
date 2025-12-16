@@ -1,15 +1,21 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Eye, Download, Heart, Image as ImageIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Eye, Download, Heart, Image as ImageIcon, Plus, Share2, Settings, Trash2, MoreVertical } from 'lucide-react';
 import type { Album, Photo } from '@/lib/api/albums';
 
 interface AlbumHeaderProps {
     album: Album;
     photos: Photo[];
+    onAddPhotos: () => void;
+    onShare: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
 }
 
-export function AlbumHeader({ album, photos }: AlbumHeaderProps) {
+export function AlbumHeader({ album, photos, onAddPhotos, onShare, onEdit, onDelete }: AlbumHeaderProps) {
     return (
         <div className="flex-1">
             <div className="flex items-start justify-between">
@@ -19,16 +25,43 @@ export function AlbumHeader({ album, photos }: AlbumHeaderProps) {
                         <p className="text-muted-foreground mt-2 max-w-2xl">{album.description}</p>
                     )}
                 </div>
-                <Badge
+                <div className="md:hidden">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={onAddPhotos}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Photos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onShare}>
+                                <Share2 className="h-4 w-4 mr-2" />
+                                Share
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onEdit}>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+                {/* <Badge
                     variant={album.status === 'published' ? 'default' : 'secondary'}
                     className="ml-4"
                 >
                     {album.status}
-                </Badge>
-            </div>
+                </Badge> */}
 
+            </div>
             {/* Metadata Row */}
-            <div className="flex items-center gap-4 mt-4 text-sm">
+            <div className="items-center gap-4 mt-3 text-sm hidden md:flex">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                     <ImageIcon className="h-4 w-4" />
                     <span className="font-medium text-foreground">{album.totalPhotos}</span>
@@ -70,6 +103,27 @@ export function AlbumHeader({ album, photos }: AlbumHeaderProps) {
                     </>
                 )}
             </div>
-        </div>
+
+            <div className="gap-2 mt-3 hidden md:flex">
+                <Button onClick={onAddPhotos}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Photos
+                </Button>
+                <Button variant="outline" onClick={onShare}>
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                </Button>
+                <Button variant="outline" onClick={onEdit}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit
+                </Button>
+                <Button variant="outline" onClick={onDelete}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                </Button>
+            </div>
+
+        </div >
     );
 }
+

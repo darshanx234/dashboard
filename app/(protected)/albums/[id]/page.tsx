@@ -27,8 +27,8 @@ import { UploadProgressPanel, type UploadingFile } from '@/components/shared/alb
 import { PhotoGallery } from '@/components/shared/albums/photo-gallery';
 import { ImagePreviewModal } from '@/components/shared/albums/image-preview-modal';
 import { AlbumHeader } from '@/components/shared/albums/album-header';
-import { AlbumActions } from '@/components/shared/albums/album-actions';
 import { SelectionHeader } from '@/components/shared/albums/selection-header';
+import { StorageIndicator, type StorageInfo } from '@/components/shared/albums/storage-indicator';
 
 // Upload Service
 import { UploadService, type UploadTask } from '@/lib/services/upload-service';
@@ -91,8 +91,15 @@ export default function AlbumDetailPage() {
         // Add photo to gallery at the beginning (new uploads appear first)
         setPhotos((prev) => [photo, ...prev]);
 
-        // Update album count
-        setAlbum((prev) => prev ? { ...prev, totalPhotos: prev.totalPhotos + 1 } : null);
+        // Update album count and storage used
+        setAlbum((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            totalPhotos: prev.totalPhotos + 1,
+            storageUsed: (prev.storageUsed || 0) + photo.fileSize,
+          };
+        });
       },
       onError: (taskId, error) => {
         setUploadingFiles((prev) =>
@@ -424,6 +431,43 @@ export default function AlbumDetailPage() {
     setImagePreview((prev) => ({ ...prev, zoom: 1 }));
   };
 
+  // Helper function to calculate storage info
+  const getStorageInfo = (): StorageInfo | null => {
+    if (!album || !album.storageLimit) return null;
+
+    const used = album.storageUsed || 0;
+    const limit = album.storageLimit;
+    const remaining = Math.max(0, limit - used);
+    const percentage = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+
+    const formatBytes = (bytes: number): string => {
+      if (bytes === 0) return '0 Bytes';
+      const GB = 1024 * 1024 * 1024;
+      const MB = 1024 * 1024;
+      const KB = 1024;
+
+      if (bytes >= GB) {
+        return `${(bytes / GB).toFixed(2)} GB`;
+      } else if (bytes >= MB) {
+        return `${(bytes / MB).toFixed(2)} MB`;
+      } else if (bytes >= KB) {
+        return `${(bytes / KB).toFixed(2)} KB`;
+      } else {
+        return `${bytes} Bytes`;
+      }
+    };
+
+    return {
+      used,
+      limit,
+      remaining,
+      percentage: Math.round(percentage * 100) / 100,
+      usedFormatted: formatBytes(used),
+      limitFormatted: formatBytes(limit),
+      remainingFormatted: formatBytes(remaining),
+    };
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -493,14 +537,27 @@ export default function AlbumDetailPage() {
           ) : (
             <>
               <div className="flex items-start justify-between">
-                <AlbumHeader album={album} photos={photos} />
+                <AlbumHeader
+                  album={album}
+                  photos={photos}
+                  onAddPhotos={() => fileInputRef.current?.click()}
+                  onShare={() => setShareDialogOpen(true)}
+                  onEdit={() => setEditDialogOpen(true)}
+                  onDelete={handleDeleteAlbum} />
               </div>
-              <AlbumActions
+              {/* <AlbumActions
                 onAddPhotos={() => fileInputRef.current?.click()}
                 onShare={() => setShareDialogOpen(true)}
                 onEdit={() => setEditDialogOpen(true)}
                 onDelete={handleDeleteAlbum}
-              />
+              /> */}
+              {/* Storage Indicator */}
+              {getStorageInfo() && (
+                <StorageIndicator
+                  storageInfo={getStorageInfo()!}
+                  compact={true}
+                />
+              )}
             </>
           )}
         </div>
