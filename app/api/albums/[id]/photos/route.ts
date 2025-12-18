@@ -4,6 +4,8 @@ import connectDB from '@/lib/db';
 import Album from '@/lib/models/Album';
 import Photo from '@/lib/models/Photo';
 import { generatePresignedDownloadUrl, deleteFromS3 } from '@/lib/utils/s3';
+// import { publishEnrollJob } from '@/lib/services/rabbitmq'; // DEPRECATED: Replaced with SQS
+import { publishEnrollJob } from '@/lib/services/sqs'; // Using Amazon SQS
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -139,6 +141,7 @@ export async function POST(
       order: body.order || 0,
       status: 'ready',
       isProcessed: true,
+      isFaceDetectionProcessed: false, // Will be set to true after worker processes
     });
 
     // Update album photo count
@@ -151,6 +154,23 @@ export async function POST(
       await Album.findByIdAndUpdate(id, {
         coverPhoto: body.s3Url,
       });
+    }
+
+    // Publish RabbitMQ message for face detection processing
+    try {
+      // Generate presigned URL for worker to download (24 hour expiry for processing)
+      const downloadUrl = await generatePresignedDownloadUrl(body.s3Key, 86400); // 24 hours
+
+      await publishEnrollJob({
+        photoId: photo._id.toString(),
+        uploadedBy: decoded.userId,
+        imageUri: body.s3Key,
+        downloadUrl: downloadUrl, // Presigned URL for worker to download
+      });
+      console.log(`✅ Published face detection job for photo ${photo._id}`);
+    } catch (error) {
+      console.error('⚠️ Failed to publish face detection job:', error);
+      // Don't fail the request if RabbitMQ publish fails
     }
 
     const photoUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600); // 1 hour expiry

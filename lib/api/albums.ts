@@ -23,6 +23,21 @@ export interface Album {
   updatedAt: string;
 }
 
+export interface PhotoVariant {
+  s3Key: string;
+  s3Url: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+}
+
+export interface PhotoVariants {
+  original?: PhotoVariant;
+  webp?: PhotoVariant;
+  thumbnail?: PhotoVariant;
+}
+
 export interface Photo {
   _id: string;
   albumId: string;
@@ -33,6 +48,7 @@ export interface Photo {
   s3Url: string;
   url?: string; // Presigned URL for accessing the photo
   thumbnailUrl?: string; // Presigned URL for thumbnail
+  variants?: PhotoVariants; // Multi-variant storage
   fileSize: number;
   mimeType: string;
   width?: number;

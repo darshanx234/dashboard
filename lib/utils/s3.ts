@@ -29,7 +29,7 @@ export function generateS3Key(photographerId: string, albumId: string, filename:
   const timestamp = Date.now();
   const randomString = Math.random().toString(36).substring(2, 15);
   const extension = filename.split('.').pop();
-  
+
   return `photos/${photographerId}/${albumId}/${timestamp}-${randomString}.${extension}`;
 }
 
@@ -41,10 +41,87 @@ export function generateThumbnailKey(originalKey: string): string {
   const filename = parts[parts.length - 1];
   const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
   const extension = filename.split('.').pop();
-  
+
   parts[parts.length - 1] = `${nameWithoutExt}_thumb.${extension}`;
   return parts.join('/');
 }
+
+/**
+ * Variant types for photo storage
+ */
+export type PhotoVariantType = 'original' | 'webp' | 'thumbnail';
+
+/**
+ * Generate S3 key for a specific photo variant
+ */
+export function generateVariantS3Key(
+  photographerId: string,
+  albumId: string,
+  filename: string,
+  variant: PhotoVariantType
+): string {
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 15);
+  const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
+
+  let extension: string;
+  switch (variant) {
+    case 'webp':
+      extension = 'webp';
+      break;
+    case 'thumbnail':
+      extension = 'webp'; // Thumbnails are webp for better compression
+      break;
+    case 'original':
+    default:
+      extension = filename.split('.').pop() || 'jpg';
+  }
+
+  const suffix = variant === 'original' ? '' : `_${variant}`;
+  return `photos/${photographerId}/${albumId}/${timestamp}-${randomString}${suffix}.${extension}`;
+}
+
+/**
+ * Generate presigned upload URLs for multiple photo variants
+ */
+export async function generatePresignedUploadUrlsForVariants(
+  photographerId: string,
+  albumId: string,
+  filename: string,
+  variants: PhotoVariantType[],
+  expiresIn: number = 300
+): Promise<Record<PhotoVariantType, { uploadUrl: string; s3Key: string; mimeType: string }>> {
+  const result: Record<string, { uploadUrl: string; s3Key: string; mimeType: string }> = {};
+
+  for (const variant of variants) {
+    const s3Key = generateVariantS3Key(photographerId, albumId, filename, variant);
+    const mimeType = variant === 'original'
+      ? getMimeTypeFromFilename(filename)
+      : 'image/webp';
+
+    const { uploadUrl } = await generatePresignedUploadUrl(s3Key, mimeType, expiresIn);
+    result[variant] = { uploadUrl, s3Key, mimeType };
+  }
+
+  return result as Record<PhotoVariantType, { uploadUrl: string; s3Key: string; mimeType: string }>;
+}
+
+/**
+ * Get MIME type from filename extension
+ */
+function getMimeTypeFromFilename(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'webp': 'image/webp',
+    'heic': 'image/heic',
+    'avif': 'image/avif',
+  };
+  return mimeTypes[ext || ''] || 'image/jpeg';
+}
+
 
 /**
  * Upload file to S3

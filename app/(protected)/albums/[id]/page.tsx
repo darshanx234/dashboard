@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { albumApi, photoApi, type Album, type Photo } from '@/lib/api/albums';
+import { photosApi, type PhotoPerson } from '@/lib/api/photos';
 import { useToast } from '@/hooks/use-toast';
 import { ShareDialog } from '@/components/shared/albums/share-dialog';
 import { EditAlbumDialog } from '@/components/shared/albums/edit-album-dialog';
@@ -66,6 +67,10 @@ export default function AlbumDetailPage() {
   const [page, setPage] = useState(1);
   const [hasMorePhotos, setHasMorePhotos] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Photo persons state
+  const [photoPersons, setPhotoPersons] = useState<Record<string, PhotoPerson[]>>({});
+  const [loadingPersons, setLoadingPersons] = useState<Record<string, boolean>>({});
 
   const albumId = params.id as string;
 
@@ -388,28 +393,63 @@ export default function AlbumDetailPage() {
   };
 
   // Image preview
-  const openImagePreview = (index: number) => {
+  const openImagePreview = async (index: number) => {
     setImagePreview({ isOpen: true, currentIndex: index, zoom: 1 });
+
+    // Fetch photo persons when opening preview
+    const photo = photos[index];
+    if (photo && !photoPersons[photo._id] && !loadingPersons[photo._id]) {
+      await fetchPhotoPersons(photo._id);
+    }
   };
 
   const closeImagePreview = () => {
     setImagePreview({ isOpen: false, currentIndex: 0, zoom: 1 });
   };
 
-  const goToNextImage = () => {
+  const goToNextImage = async () => {
+    const nextIndex = (imagePreview.currentIndex + 1) % photos.length;
     setImagePreview((prev) => ({
       ...prev,
-      currentIndex: (prev.currentIndex + 1) % photos.length,
+      currentIndex: nextIndex,
       zoom: 1,
     }));
+
+    // Fetch photo persons for next image
+    const photo = photos[nextIndex];
+    if (photo && !photoPersons[photo._id] && !loadingPersons[photo._id]) {
+      await fetchPhotoPersons(photo._id);
+    }
   };
 
-  const goToPrevImage = () => {
+  const goToPrevImage = async () => {
+    const prevIndex = imagePreview.currentIndex === 0 ? photos.length - 1 : imagePreview.currentIndex - 1;
     setImagePreview((prev) => ({
       ...prev,
-      currentIndex: prev.currentIndex === 0 ? photos.length - 1 : prev.currentIndex - 1,
+      currentIndex: prevIndex,
       zoom: 1,
     }));
+
+    // Fetch photo persons for previous image
+    const photo = photos[prevIndex];
+    if (photo && !photoPersons[photo._id] && !loadingPersons[photo._id]) {
+      await fetchPhotoPersons(photo._id);
+    }
+  };
+
+  // Fetch photo persons from API
+  const fetchPhotoPersons = async (photoId: string) => {
+    setLoadingPersons(prev => ({ ...prev, [photoId]: true }));
+    try {
+      const data = await photosApi.getPhotoPersons(photoId);
+      setPhotoPersons(prev => ({ ...prev, [photoId]: data.persons }));
+    } catch (error: any) {
+      console.error('Failed to fetch photo persons:', error);
+      // Set empty array on error to prevent retrying
+      setPhotoPersons(prev => ({ ...prev, [photoId]: [] }));
+    } finally {
+      setLoadingPersons(prev => ({ ...prev, [photoId]: false }));
+    }
   };
 
   const handleZoomIn = () => {
@@ -605,6 +645,8 @@ export default function AlbumDetailPage() {
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onResetZoom={handleResetZoom}
+          photoPersons={photos[imagePreview.currentIndex] ? photoPersons[photos[imagePreview.currentIndex]._id] : undefined}
+          loadingPersons={photos[imagePreview.currentIndex] ? loadingPersons[photos[imagePreview.currentIndex]._id] : false}
         />
       </div>
     </AppLayout>

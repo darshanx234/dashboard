@@ -1,13 +1,31 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+// Variant type for each photo version
+export interface IPhotoVariant {
+  s3Key: string;
+  s3Url: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+}
+
+// All available variants
+export interface IPhotoVariants {
+  original?: IPhotoVariant;
+  webp?: IPhotoVariant;
+  thumbnail?: IPhotoVariant;
+}
+
 export interface IPhoto extends Document {
   albumId: mongoose.Types.ObjectId;
   photographerId: mongoose.Types.ObjectId;
   filename: string;
   originalName: string;
-  s3Key: string; // S3 object key
-  s3Url: string; // Public S3 URL
-  thumbnailUrl?: string; // Thumbnail S3 URL
+  s3Key: string; // S3 object key (for backwards compatibility)
+  s3Url: string; // Public S3 URL (for backwards compatibility)
+  thumbnailUrl?: string; // Thumbnail S3 URL (for backwards compatibility)
+  variants?: IPhotoVariants; // Multi-variant storage
   fileSize: number; // in bytes
   mimeType: string;
   width?: number;
@@ -26,10 +44,13 @@ export interface IPhoto extends Document {
   views: number;
   downloads: number;
   favoritesCount: number;
+  personsCount: number; // Number of detected persons in this photo
+  isFaceDetectionProcessed: boolean; // Whether face detection has been run
   status: 'uploading' | 'processing' | 'ready' | 'error';
   createdAt: Date;
   updatedAt: Date;
 }
+
 
 const PhotoSchema: Schema = new Schema(
   {
@@ -64,6 +85,32 @@ const PhotoSchema: Schema = new Schema(
     },
     thumbnailUrl: {
       type: String,
+    },
+    variants: {
+      original: {
+        s3Key: String,
+        s3Url: String,
+        mimeType: String,
+        width: Number,
+        height: Number,
+        fileSize: Number,
+      },
+      webp: {
+        s3Key: String,
+        s3Url: String,
+        mimeType: String,
+        width: Number,
+        height: Number,
+        fileSize: Number,
+      },
+      thumbnail: {
+        s3Key: String,
+        s3Url: String,
+        mimeType: String,
+        width: Number,
+        height: Number,
+        fileSize: Number,
+      },
     },
     fileSize: {
       type: Number,
@@ -114,6 +161,15 @@ const PhotoSchema: Schema = new Schema(
       type: Number,
       default: 0,
     },
+    personsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    isFaceDetectionProcessed: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ['uploading', 'processing', 'ready', 'error'],
@@ -129,6 +185,8 @@ const PhotoSchema: Schema = new Schema(
 PhotoSchema.index({ albumId: 1, order: 1 });
 PhotoSchema.index({ photographerId: 1, createdAt: -1 });
 PhotoSchema.index({ status: 1 });
+PhotoSchema.index({ photographerId: 1, isFaceDetectionProcessed: 1 });
+PhotoSchema.index({ personsCount: 1 });
 
 const Photo: Model<IPhoto> = mongoose.models.Photo || mongoose.model<IPhoto>('Photo', PhotoSchema);
 
