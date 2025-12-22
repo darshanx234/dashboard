@@ -114,6 +114,6 @@ AlbumShareSchema.index({ 'sharedWith.userId': 1 });
 AlbumShareSchema.index({ accessToken: 1 });
 AlbumShareSchema.index({ expiresAt: 1 });
 
-const AlbumShare: Model<IAlbumShare> = mongoose.models.AlbumShare || mongoose.model<IAlbumShare>('AlbumShare', AlbumShareSchema);
+const   AlbumShare: Model<IAlbumShare> = mongoose.models.AlbumShare || mongoose.model<IAlbumShare>('AlbumShare', AlbumShareSchema);
 
 export default AlbumShare;

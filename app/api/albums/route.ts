@@ -109,64 +109,105 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only photographers can create albums' }, { status: 403 });
     }
 
-    // Check if user has sufficient credits
-    const hasSufficientCredits = await WalletService.hasSufficientCredits(
-      decoded.userId,
-      ALBUM_CREATION_COST
-    );
+    // Validate plan selection
+    const { planId } = body;
+    if (!planId) {
+      return NextResponse.json(
+        { error: 'Plan selection is required' },
+        { status: 400 }
+      );
+    }
 
-    if (!hasSufficientCredits) {
-      const balance = await WalletService.getBalance(decoded.userId);
+    // Import AlbumPlanService
+    const { AlbumPlanService } = await import('@/lib/services/album-plan.service');
+    
+    // Validate plan and check wallet balance
+    const validation = await AlbumPlanService.validatePlanSelection(planId, decoded.userId);
+    
+    if (!validation.isValid) {
       return NextResponse.json(
         {
-          error: 'Insufficient credits',
-          message: `You need ${ALBUM_CREATION_COST} credits to create an album. Current balance: ${balance} credits.`,
-          required: ALBUM_CREATION_COST,
-          current: balance,
+          error: validation.error,
+          required: validation.plan?.price,
+          current: validation.userBalance,
         },
         { status: 402 } // 402 Payment Required
       );
     }
 
-    // Create album
+    const plan = validation.plan!;
+
+    // Create album with plan details
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + plan.durationDays);
+
     const album = await Album.create({
       title: body.title,
       description: body.description,
       photographerId: decoded.userId,
-      photographerName: user.name || "default",
-      photographerEmail: user.email || "",
-      shootDate: body.shootDate || "",
-      location: body.location || "",
+      photographerName: user.fullName || user.businessName || 'Photographer',
+      photographerEmail: user.email || '',
+      eventType: body.eventType || undefined,
+      shootDate: body.shootDate || '',
+      location: body.location || '',
       isPrivate: body.isPrivate || false,
       password: body.password, // Should be hashed if provided
       allowDownloads: body.allowDownloads !== false,
       allowFavorites: body.allowFavorites !== false,
       status: 'draft',
+      // Plan-related fields
+      planId: plan._id,
+      planName: plan.name,
+      planPrice: plan.price,
+      storageLimit: plan.storageLimit,
+      storageLimitGB: plan.storageLimitGB,
+      storageUsed: 0,
+      planExpiresAt: expiryDate,
+      isExpired: false,
     });
 
-    // Deduct credits after successful album creation
+    // Deduct credits from wallet
     try {
       await WalletService.deductCredits({
         userId: decoded.userId,
-        amount: ALBUM_CREATION_COST,
+        amount: plan.price,
         category: 'album_creation',
-        description: `Album created: ${album.title}`,
+        description: `Album created: ${album.title} (${plan.name} Plan)`,
         metadata: {
           albumId: album._id,
           albumTitle: album.title,
+          planId: plan._id,
+          planName: plan.name,
+          planPrice: plan.price,
+          storageLimit: plan.storageLimitGB,
         },
       });
-    } catch (creditError) {
+    } catch (creditError: any) {
+      // If credit deduction fails, delete the album and return error
+      await Album.findByIdAndDelete(album._id);
       console.error('Error deducting credits:', creditError);
-      // Album is already created, log the error but don't fail the request
+      return NextResponse.json(
+        { error: 'Failed to process payment', message: creditError.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
+      success: true,
       message: 'Album created successfully',
-      album,
+      album: {
+        ...album.toObject(),
+        storageInfo: {
+          used: 0,
+          limit: plan.storageLimit,
+          limitGB: plan.storageLimitGB,
+          remaining: plan.storageLimit,
+          percentage: 0,
+        },
+      },
     }, { status: 201 });
   } catch (error: any) {
     console.error('Create Album Error:', error);
-    return NextResponse.json({ error: 'Failed to create album' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create album', message: error.message }, { status: 500 });
   }
 }

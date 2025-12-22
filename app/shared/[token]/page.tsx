@@ -23,10 +23,19 @@ import Link from 'next/link';
 import { ClientIdentityDialog } from '@/components/shared/ClientIdentityDialog';
 import { ImagePreview } from '@/components/shared/ImagePreview';
 
+// LightGallery imports
+import LightGallery from 'lightgallery/react';
+import 'lightgallery/css/lightgallery.css';
+import 'lightgallery/css/lg-zoom.css';
+import 'lightgallery/css/lg-thumbnail.css';
+import lgThumbnail from 'lightgallery/plugins/thumbnail';
+import lgZoom from 'lightgallery/plugins/zoom';
+
 export default function SharedAlbumPage() {
     const params = useParams();
     const { toast } = useToast();
     const token = params.token as string;
+    const lightGalleryRef = useRef<any>(null);
 
     const [loading, setLoading] = useState(true);
     const [requiresPassword, setRequiresPassword] = useState(false);
@@ -513,15 +522,26 @@ export default function SharedAlbumPage() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
+                        <LightGallery
+                            onInit={(detail) => {
+                                lightGalleryRef.current = detail.instance;
+                            }}
+                            // dynamic={true}
+                            speed={500}
+                            plugins={[lgThumbnail, lgZoom]}
+                            elementClassNames="columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-4"
+                            mode="lg-fade"
+                            addClass="lg-zoom-from-origin"
+                            startAnimationDuration={400}
+                            backdropDuration={400}
+                        >
                             {photos.map((photo, index) => (
-                                <div
+                                <a
                                     key={photo._id}
-                                    className="break-inside-avoid mb-4"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        openImagePreview(index);
-                                    }}
+                                    href={photo.url || photo.thumbnailUrl || ''}
+                                    data-src={photo.url || photo.thumbnailUrl || ''}
+                                    data-lg-size={photo.width + '-' + photo.height}
+                                    className="break-inside-avoid mb-4 block"
                                 >
                                     <div className="group relative overflow-hidden rounded-lg bg-muted hover:shadow-xl transition-all duration-300 cursor-pointer">
                                         {photo.url || photo.thumbnailUrl ? (
@@ -579,9 +599,9 @@ export default function SharedAlbumPage() {
                                             </Badge>
                                         )}
                                     </div>
-                                </div>
+                                </a>
                             ))}
-                        </div>
+                        </LightGallery>
                     )}
                 </div>
 
