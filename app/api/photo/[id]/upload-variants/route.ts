@@ -17,13 +17,13 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const token = request.cookies.get('token')?.value;
+        // const token = request.cookies.get('token')?.value;
 
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        // if (!token) {
+        //     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        // const decoded = jwt.verify(token, JWT_SECRET) as any;
         const { id } = await params;
 
         // Validate photo ID
@@ -47,12 +47,12 @@ export async function POST(
         }
 
         // Check authorization - only the photographer can upload variants
-        if (photo.photographerId.toString() !== decoded.userId) {
-            return NextResponse.json(
-                { error: 'Not authorized to upload variants for this photo' },
-                { status: 403 }
-            );
-        }
+        // if (photo.photographerId.toString() !== decoded.userId) {
+        //     return NextResponse.json(
+        //         { error: 'Not authorized to upload variants for this photo' },
+        //         { status: 403 }
+        //     );
+        // }
 
         // Get requested variants from body, default to webp and thumbnail
         const body = await request.json().catch(() => ({}));
@@ -76,6 +76,8 @@ export async function POST(
             photo.originalName,
             variants
         );
+
+        console.log(uploadUrls);
 
         return NextResponse.json({
             success: true,
@@ -103,13 +105,13 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const token = request.cookies.get('token')?.value;
+        // const token = request.cookies.get('token')?.value;
 
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        // if (!token) {
+        //     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        // const decoded = jwt.verify(token, JWT_SECRET) as any;
         const { id } = await params;
 
         // Validate photo ID
@@ -133,12 +135,12 @@ export async function PUT(
         }
 
         // Check authorization
-        if (photo.photographerId.toString() !== decoded.userId) {
-            return NextResponse.json(
-                { error: 'Not authorized to update variants for this photo' },
-                { status: 403 }
-            );
-        }
+        // if (photo.photographerId.toString() !== decoded.userId) {
+        //     return NextResponse.json(
+        //         { error: 'Not authorized to update variants for this photo' },
+        //         { status: 403 }
+        //     );
+        // }
 
         const body = await request.json();
         const { variants } = body;

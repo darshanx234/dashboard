@@ -52,18 +52,78 @@ export async function GET(
 
     const total = await Photo.countDocuments({ albumId: id });
 
-    // Generate presigned URLs for each photo
+    // Generate presigned URLs for each photo (including variants if available)
     const photosWithUrls = await Promise.all(
       photos.map(async (photo: any) => {
         try {
           // Generate presigned URL for the main photo
           const signedUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600); // 1 hour expiry
 
+          // Build variants with presigned URLs if they exist
+          let variantsWithUrls = undefined;
+          if (photo.variants) {
+            variantsWithUrls = {};
+
+            // Generate presigned URL for thumbnail variant
+            if (photo.variants.thumbnail?.s3Key) {
+              try {
+                const thumbnailSignedUrl = await generatePresignedDownloadUrl(
+                  photo.variants.thumbnail.s3Key,
+                  3600
+                );
+                variantsWithUrls.thumbnail = {
+                  ...photo.variants.thumbnail,
+                  s3Url: thumbnailSignedUrl,
+                };
+              } catch (err) {
+                console.error(`Failed to generate thumbnail variant URL for photo ${photo._id}:`, err);
+                variantsWithUrls.thumbnail = photo.variants.thumbnail;
+              }
+            }
+
+            // Generate presigned URL for webp variant
+            if (photo.variants.webp?.s3Key) {
+              try {
+                const webpSignedUrl = await generatePresignedDownloadUrl(
+                  photo.variants.webp.s3Key,
+                  3600
+                );
+                variantsWithUrls.webp = {
+                  ...photo.variants.webp,
+                  s3Url: webpSignedUrl,
+                };
+              } catch (err) {
+                console.error(`Failed to generate webp variant URL for photo ${photo._id}:`, err);
+                variantsWithUrls.webp = photo.variants.webp;
+              }
+            }
+
+            // Generate presigned URL for original variant
+            if (photo.variants.original?.s3Key) {
+              try {
+                const originalSignedUrl = await generatePresignedDownloadUrl(
+                  photo.variants.original.s3Key,
+                  3600
+                );
+                variantsWithUrls.original = {
+                  ...photo.variants.original,
+                  s3Url: originalSignedUrl,
+                };
+              } catch (err) {
+                console.error(`Failed to generate original variant URL for photo ${photo._id}:`, err);
+                variantsWithUrls.original = photo.variants.original;
+              }
+            }
+          }
+
+          // Use thumbnail variant URL if available, otherwise fall back to main signed URL
+          const thumbnailUrl = variantsWithUrls?.thumbnail?.s3Url || signedUrl;
+
           return {
             ...photo,
             url: signedUrl,
-            // Use the presigned URL for thumbnail as well (or keep existing if available)
-            thumbnailUrl: signedUrl,
+            thumbnailUrl: thumbnailUrl,
+            variants: variantsWithUrls,
           };
         } catch (error) {
           console.error(`Failed to generate URL for photo ${photo._id}:`, error);
