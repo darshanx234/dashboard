@@ -1,10 +1,10 @@
 /* Custom Calendar Styles */
 
 .calendar-container {
-  background: hsl(var(--card));
+  /* background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: 1rem; */
 }
 
 /* Calendar base styles */
@@ -17,12 +17,12 @@
 .rbc-header {
   padding: 0.75rem 0.5rem;
   font-weight: 600;
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: 1px solid #ebebeb;
   background: hsl(var(--muted) / 0.3);
 }
 
 .rbc-header + .rbc-header {
-  border-left: 1px solid hsl(var(--border));
+  border-left: 1px solid #ebebeb;
 }
 
 /* Month view */

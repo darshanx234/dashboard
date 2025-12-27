@@ -139,11 +139,15 @@ export async function POST(
       order: body.order || 0,
       status: 'ready',
       isProcessed: true,
+      isClientSelected: false,
     });
 
-    // Update album photo count
+    // Update album photo count and storage used
     await Album.findByIdAndUpdate(id, {
-      $inc: { totalPhotos: 1 },
+      $inc: { 
+        totalPhotos: 1,
+        storageUsed: body.fileSize || 0
+      },
     });
 
     // Set cover photo if this is the first photo
@@ -227,9 +231,14 @@ export async function DELETE(
       albumId: id,
     });
 
-    // Update album photo count
+    // Update album photo count and storage used
+    const totalSize = photos.reduce((acc, photo) => acc + (photo.fileSize || 0), 0);
+    
     await Album.findByIdAndUpdate(id, {
-      $inc: { totalPhotos: -photos.length },
+      $inc: { 
+        totalPhotos: -photos.length,
+        storageUsed: -totalSize
+      },
     });
 
     // If deleted photo was the cover photo, clear it

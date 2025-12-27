@@ -104,7 +104,7 @@ export default function CalendarPage() {
             }
             // Refresh events and switch to agenda view
             await loadData();
-            setView('agenda');
+            // setView('agenda');
         } catch (error) {
             console.error('Failed to save event:', error);
             toast({
@@ -226,7 +226,7 @@ export default function CalendarPage() {
                     }}
                 />
 
-                <div className="calendar-container">
+                <div className="calendar-container border rounded-lg">
                     <Calendar
                         localizer={localizer}
                         events={events}

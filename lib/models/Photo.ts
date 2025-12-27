@@ -26,6 +26,8 @@ export interface IPhoto extends Document {
   views: number;
   downloads: number;
   favoritesCount: number;
+  likesCount: number;
+  isClientSelected: boolean;
   status: 'uploading' | 'processing' | 'ready' | 'error';
   createdAt: Date;
   updatedAt: Date;
@@ -113,6 +115,14 @@ const PhotoSchema: Schema = new Schema(
     favoritesCount: {
       type: Number,
       default: 0,
+    },
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
+    isClientSelected: {
+      type: Boolean,
+      default: false,
     },
     status: {
       type: String,

@@ -21,21 +21,12 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { ClientIdentityDialog } from '@/components/shared/ClientIdentityDialog';
-import { ImagePreview } from '@/components/shared/ImagePreview';
-
-// LightGallery imports
-import LightGallery from 'lightgallery/react';
-import 'lightgallery/css/lightgallery.css';
-import 'lightgallery/css/lg-zoom.css';
-import 'lightgallery/css/lg-thumbnail.css';
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
-import lgZoom from 'lightgallery/plugins/zoom';
+import { PhotoGallery } from '@/components/shared/albums/photo-gallery';
 
 export default function SharedAlbumPage() {
     const params = useParams();
     const { toast } = useToast();
     const token = params.token as string;
-    const lightGalleryRef = useRef<any>(null);
 
     const [loading, setLoading] = useState(true);
     const [requiresPassword, setRequiresPassword] = useState(false);
@@ -47,10 +38,7 @@ export default function SharedAlbumPage() {
     const [permissions, setPermissions] = useState<SharePermissions | null>(null);
     const [shareType, setShareType] = useState<string>('');
     const [expiresAt, setExpiresAt] = useState<string | null>(null);
-    const [imagePreview, setImagePreview] = useState({
-        isOpen: false,
-        currentIndex: 0,
-    });
+
 
     // Client identity state
     const [showIdentityDialog, setShowIdentityDialog] = useState(false);
@@ -213,15 +201,8 @@ export default function SharedAlbumPage() {
         try {
             const response = await shareApi.toggleFavorite(token, photoId, isFavorite, clientId || undefined);
 
-            // Update local state
+            // Always update photoFavorites so button shows correct state
             setPhotoFavorites(prev => ({ ...prev, [photoId]: isFavorite }));
-
-            // Update photo favorites count
-            setPhotos(prev => prev.map(p =>
-                p._id === photoId
-                    ? { ...p, favoritesCount: response.favoritesCount }
-                    : p
-            ));
         } catch (error: any) {
             toast({
                 title: 'Error',
@@ -260,6 +241,34 @@ export default function SharedAlbumPage() {
             toast({
                 title: 'Error',
                 description: error.message || 'Failed to add comment',
+                variant: 'destructive',
+            });
+            throw error;
+        }
+    };
+
+    // Handle selection toggle
+    const handleSelectionToggle = async (photoId: string, isClientSelected: boolean) => {
+        try {
+            await shareApi.toggleSelection(token, photoId, isClientSelected);
+
+            // Update local state
+            setPhotos(prevPhotos =>
+                prevPhotos.map(p =>
+                    p._id === photoId
+                        ? { ...p, isClientSelected }
+                        : p
+                )
+            );
+
+            toast({
+                title: isClientSelected ? 'Selected' : 'Deselected',
+                description: isClientSelected ? 'Photo marked as selected' : 'Photo removed from selection',
+            });
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to update selection',
                 variant: 'destructive',
             });
             throw error;
@@ -312,20 +321,7 @@ export default function SharedAlbumPage() {
         }
     };
 
-    // Image Preview Functions
-    const openImagePreview = (index: number) => {
-        setImagePreview({ isOpen: true, currentIndex: index });
-        document.body.style.overflow = 'hidden';
-    };
 
-    const closeImagePreview = () => {
-        setImagePreview({ isOpen: false, currentIndex: 0 });
-        document.body.style.overflow = 'unset';
-    };
-
-    const handleNavigate = (index: number) => {
-        setImagePreview(prev => ({ ...prev, currentIndex: index }));
-    };
 
     // Password required view
     if (requiresPassword && !verified) {
@@ -511,116 +507,26 @@ export default function SharedAlbumPage() {
 
                 {/* Photos Masonry Gallery */}
                 <div>
-                    {photos.length === 0 ? (
-                        <Card>
-                            <CardContent className="flex flex-col items-center justify-center py-12">
-                                <ImageIcon className="h-16 w-16 text-muted-foreground mb-4" />
-                                <h3 className="text-lg font-semibold mb-2">No photos yet</h3>
-                                <p className="text-sm text-muted-foreground text-center max-w-md">
-                                    Photos will appear here once they are uploaded
-                                </p>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <LightGallery
-                            onInit={(detail) => {
-                                lightGalleryRef.current = detail.instance;
-                            }}
-                            // dynamic={true}
-                            speed={500}
-                            plugins={[lgThumbnail, lgZoom]}
-                            elementClassNames="columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-4"
-                            mode="lg-fade"
-                            addClass="lg-zoom-from-origin"
-                            startAnimationDuration={400}
-                            backdropDuration={400}
-                        >
-                            {photos.map((photo, index) => (
-                                <a
-                                    key={photo._id}
-                                    href={photo.url || photo.thumbnailUrl || ''}
-                                    data-src={photo.url || photo.thumbnailUrl || ''}
-                                    data-lg-size={photo.width + '-' + photo.height}
-                                    className="break-inside-avoid mb-4 block"
-                                >
-                                    <div className="group relative overflow-hidden rounded-lg bg-muted hover:shadow-xl transition-all duration-300 cursor-pointer">
-                                        {photo.url || photo.thumbnailUrl ? (
-                                            <img
-                                                src={photo.thumbnailUrl || photo.url}
-                                                alt={photo.originalName}
-                                                className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
-                                                loading="lazy"
-                                            />
-                                        ) : (
-                                            <div className="w-full aspect-square flex items-center justify-center">
-                                                <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                                            </div>
-                                        )}
-
-                                        {/* Hover Overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            {/* Photo Info */}
-                                            <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                                                <p className="text-xs font-medium truncate">{photo.originalName}</p>
-                                                {photo.width && photo.height && (
-                                                    <p className="text-xs text-white/70 mt-0.5">
-                                                        {photo.width} × {photo.height}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Download Button */}
-                                            {permissions?.canDownload && (
-                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="secondary"
-                                                        className="h-8 w-8 p-0"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleDownload(photo);
-                                                        }}
-                                                    >
-                                                        <Download className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Favorite Badge */}
-                                        {photo.favoritesCount > 0 && (
-                                            <Badge
-                                                variant="secondary"
-                                                className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm"
-                                            >
-                                                <Heart className="h-3 w-3 mr-1 fill-current text-red-500" />
-                                                {photo.favoritesCount}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </a>
-                            ))}
-                        </LightGallery>
-                    )}
+                    <PhotoGallery
+                        photos={photos}
+                        selectedPhotos={new Set()}
+                        onPhotoSelect={(photoId) => handleSelectionToggle(photoId, !photos.find(p => p._id === photoId)?.isClientSelected)}
+                        hasSelection={true}
+                        canDownload={permissions?.canDownload}
+                        onDownload={handleDownload}
+                        useInternalPreview={true}
+                        permissions={permissions}
+                        clientId={clientId}
+                        token={token}
+                        photoFavorites={photoFavorites}
+                        photoComments={photoComments}
+                        onFavoriteToggle={handleFavoriteToggle}
+                        onAddComment={handleAddComment}
+                        onSelectionToggle={handleSelectionToggle}
+                    />
                 </div>
 
-                {/* Image Preview Component */}
-                <ImagePreview
-                    isOpen={imagePreview.isOpen}
-                    currentIndex={imagePreview.currentIndex}
-                    photos={photos}
-                    permissions={permissions}
-                    clientId={clientId}
-                    token={token}
-                    photoFavorites={photoFavorites}
-                    photoComments={photoComments}
-                    onClose={closeImagePreview}
-                    onNavigate={handleNavigate}
-                    onDownload={handleDownload}
-                    onFavoriteToggle={handleFavoriteToggle}
-                    onAddComment={handleAddComment}
-                />
+
             </div>
         </div>
     );

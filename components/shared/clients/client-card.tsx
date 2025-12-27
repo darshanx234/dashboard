@@ -28,48 +28,34 @@ export function ClientCard({ client, onEdit, onDelete, eventsCount = 0 }: Client
     const isActive = eventsCount > 0 || (client.albumIds?.length || 0) > 0;
 
     return (
-        <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-4 flex-1">
-                        <Avatar className="h-14 w-14 bg-primary">
-                            <AvatarFallback className="bg-primary text-primary-foreground font-bold text-lg">
+        <Card className="group relative overflow-hidden hover:shadow-md transition-all duration-300 border-muted/60 hover:border-primary/50">
+            <Link href={`/clients/${client._id}`} className="absolute inset-0 z-0" />
+
+            <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4 mb-6 relative z-10">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <Avatar className="h-12 w-12 flex-shrink-0 border-2 border-background shadow-sm ring-2 ring-muted/30 group-hover:ring-primary/20 transition-all">
+                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                                 {initials}
                             </AvatarFallback>
                         </Avatar>
 
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Link
-                                    href={`/clients/${client._id}`}
-                                    className="font-semibold text-lg hover:underline transition-colors"
-                                >
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
                                     {fullName}
-                                </Link>
+                                </h3>
                                 {isActive && (
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-medium bg-primary/10 text-primary border-0 flex-shrink-0">
                                         Active
                                     </Badge>
                                 )}
                             </div>
-
-                            <div className="space-y-1.5 mt-2">
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
                                 {client.email && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <div className="flex items-center gap-1.5 min-w-0">
                                         <Mail className="h-3.5 w-3.5 flex-shrink-0" />
                                         <span className="truncate">{client.email}</span>
-                                    </div>
-                                )}
-                                {client.phone && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                                        <span>{client.phone}</span>
-                                    </div>
-                                )}
-                                {client.address && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                                        <span className="truncate">{client.address}</span>
                                     </div>
                                 )}
                             </div>
@@ -78,48 +64,64 @@ export function ClientCard({ client, onEdit, onDelete, eventsCount = 0 }: Client
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground flex-shrink-0">
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuItem onClick={() => onEdit(client)}>
-                                Edit
+                                Edit Details
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href={`/clients/${client._id}`}>View Details</Link>
+                                <Link href={`/clients/${client._id}`}>View Profile</Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={() => onDelete(client)}
-                                className="text-red-600"
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
                             >
-                                Delete
+                                Delete Client
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
 
-                {/* Stats Footer */}
-                <div className="flex items-center gap-4 pt-4 border-t">
-                    <div className="flex items-center gap-1.5 text-sm">
-                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
-                            <Image className="h-4 w-4 text-muted-foreground" />
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/50 relative z-10">
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="h-8 w-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                            <Image className="h-4 w-4" />
                         </div>
-                        <div>
-                            <p className="font-semibold">{client.albumIds?.length || 0}</p>
-                            <p className="text-xs text-muted-foreground">Albums</p>
+                        <div className="min-w-0">
+                            <p className="font-semibold text-sm">{client.albumIds?.length || 0}</p>
+                            <p className="text-xs text-muted-foreground truncate">Albums Created</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-sm">
-                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="h-8 w-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                            <Calendar className="h-4 w-4" />
                         </div>
-                        <div>
-                            <p className="font-semibold">{eventsCount}</p>
-                            <p className="text-xs text-muted-foreground">Events</p>
+                        <div className="min-w-0">
+                            <p className="font-semibold text-sm">{eventsCount}</p>
+                            <p className="text-xs text-muted-foreground truncate">Events Linked</p>
                         </div>
                     </div>
                 </div>
+
+                {(client.phone || client.address) && (
+                    <div className="mt-4 pt-3 border-t border-border/50 space-y-2 relative z-10">
+                        {client.phone && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{client.phone}</span>
+                            </div>
+                        )}
+                        {client.address && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{client.address}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

@@ -11,6 +11,7 @@ import {
     Download,
     Eye,
     Heart,
+    Check,
 } from 'lucide-react';
 import type { Photo } from '@/lib/api/albums';
 
@@ -25,6 +26,8 @@ interface ImagePreviewModalProps {
     onZoomIn: () => void;
     onZoomOut: () => void;
     onResetZoom: () => void;
+    onSelectionToggle?: (photoId: string, isSelected: boolean) => Promise<void>;
+    isSelectionEnabled?: boolean;
 }
 
 export function ImagePreviewModal({
@@ -38,6 +41,8 @@ export function ImagePreviewModal({
     onZoomIn,
     onZoomOut,
     onResetZoom,
+    onSelectionToggle,
+    isSelectionEnabled = true,
 }: ImagePreviewModalProps) {
     // Keyboard Navigation
     useEffect(() => {
@@ -104,10 +109,28 @@ export function ImagePreviewModal({
             </Button>
 
             {/* Image Counter */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-4">
                 <span className="text-white text-sm font-medium">
                     {currentIndex + 1} / {photos.length}
                 </span>
+
+                {isSelectionEnabled && onSelectionToggle && (
+                    <>
+                        <div className="w-px h-4 bg-white/20" />
+                        <Button
+                            variant={currentPhoto.isClientSelected ? "default" : "ghost"}
+                            size="sm"
+                            className={`h-8 gap-2 ${currentPhoto.isClientSelected ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-white hover:bg-white/10'}`}
+                            onClick={async (e) => {
+                                e.stopPropagation();
+                                await onSelectionToggle(currentPhoto._id, !currentPhoto.isClientSelected);
+                            }}
+                        >
+                            <Check className="h-4 w-4" />
+                            <span className="text-xs">{currentPhoto.isClientSelected ? 'Selected' : 'Select'}</span>
+                        </Button>
+                    </>
+                )}
             </div>
 
             {/* Navigation Buttons */}

@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Eye, Download, Heart, Image as ImageIcon, Plus, Share2, Settings, Trash2, MoreVertical } from 'lucide-react';
+import { Eye, Download, Heart, Image as ImageIcon, Plus, Share2, Settings, Trash2, MoreVertical, FileSpreadsheet } from 'lucide-react';
 import type { Album, Photo } from '@/lib/api/albums';
 
 interface AlbumHeaderProps {
@@ -13,9 +13,10 @@ interface AlbumHeaderProps {
     onShare: () => void;
     onEdit: () => void;
     onDelete: () => void;
+    onExport: () => void;
 }
 
-export function AlbumHeader({ album, photos, onAddPhotos, onShare, onEdit, onDelete }: AlbumHeaderProps) {
+export function AlbumHeader({ album, photos, onAddPhotos, onShare, onEdit, onDelete, onExport }: AlbumHeaderProps) {
     return (
         <div className="flex-1">
             <div className="flex items-start justify-between">
@@ -48,6 +49,10 @@ export function AlbumHeader({ album, photos, onAddPhotos, onShare, onEdit, onDel
                             <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onExport}>
+                                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                Export Selections
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -120,6 +125,10 @@ export function AlbumHeader({ album, photos, onAddPhotos, onShare, onEdit, onDel
                 <Button variant="outline" onClick={onDelete}>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
+                </Button>
+                <Button variant="outline" onClick={onExport}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export Selections
                 </Button>
             </div>
 

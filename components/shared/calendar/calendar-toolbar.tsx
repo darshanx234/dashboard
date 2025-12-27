@@ -50,7 +50,7 @@ export function CalendarToolbar({
             </div>
 
             <div className="flex items-center gap-2">
-                <Select value={view} onValueChange={(value) => onViewChange(value as View)}>
+                {/* <Select value={view} onValueChange={(value) => onViewChange(value as View)}>
                     <SelectTrigger className="w-[140px]">
                         <SelectValue />
                     </SelectTrigger>
@@ -60,7 +60,7 @@ export function CalendarToolbar({
                         <SelectItem value="day">Day</SelectItem>
                         <SelectItem value="agenda">Agenda</SelectItem>
                     </SelectContent>
-                </Select>
+                </Select> */}
 
                 <Button onClick={onAddEvent}>
                     <Plus className="mr-2 h-4 w-4" />
