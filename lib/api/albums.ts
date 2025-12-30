@@ -77,6 +77,7 @@ export interface Photo {
   views: number;
   downloads: number;
   favoritesCount: number;
+  isClientSelected: boolean;
   status: 'uploading' | 'processing' | 'ready' | 'error';
   createdAt: string;
   updatedAt: string;
@@ -208,6 +209,11 @@ export const photoApi = {
       `/api/albums/${albumId}/photos`,
       { photoIds }
     );
+  },
+
+  // Toggle selection (photographer)
+  async toggleSelection(albumId: string, photoId: string, isClientSelected: boolean) {
+    return postWithAuth<{ message: string; photo: Photo }>(`/api/albums/${albumId}/photos/${photoId}/select`, { isClientSelected });
   },
 };
 
@@ -504,6 +510,24 @@ export const shareApi = {
       const error = await response.json();
       throw new Error(error.error || 'Failed to toggle favorite');
     }
+    return response.json();
+  },
+
+  // Toggle selection
+  async toggleSelection(token: string, photoId: string, isClientSelected: boolean) {
+    const response = await fetch(`/api/share/${token}/photos/${photoId}/select`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ isClientSelected }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to update selection');
+    }
+
     return response.json();
   },
 

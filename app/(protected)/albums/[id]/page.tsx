@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { albumApi, photoApi, type Album, type Photo } from '@/lib/api/albums';
 import { photosApi, type PhotoPerson } from '@/lib/api/photos';
@@ -346,6 +347,41 @@ export default function AlbumDetailPage() {
     }
   };
 
+  const handleExportSelections = () => {
+    // Filter selected photos
+
+    const selectedPhotosList = photos.filter(p => p.isClientSelected);
+    if (selectedPhotosList.length === 0) {
+      toast({
+        title: 'No selections',
+        description: 'No photos have been selected by clients yet.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Prepare data for Excel
+    const data = selectedPhotosList.map(photo => ({
+      Filename: photo.originalName,
+      'File Size': (photo.fileSize / 1024 / 1024).toFixed(2) + ' MB',
+      'Resolution': `${photo.width} x ${photo.height}`,
+      'Upload Date': new Date(photo.createdAt).toLocaleDateString(),
+    }));
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Selections");
+
+    // Generate Excel file
+    XLSX.writeFile(wb, `${album?.title || 'Album'}_Selections.xlsx`);
+
+    toast({
+      title: 'Success',
+      description: 'Exported selections to Excel',
+    });
+  };
+
   // Photo selection
   const togglePhotoSelection = (photoId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -396,6 +432,32 @@ export default function AlbumDetailPage() {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSelectionToggle = async (photoId: string, isClientSelected: boolean) => {
+    try {
+      await photoApi.toggleSelection(albumId, photoId, isClientSelected);
+
+      // Update local state
+      setPhotos(prevPhotos =>
+        prevPhotos.map(p =>
+          p._id === photoId
+            ? { ...p, isClientSelected }
+            : p
+        )
+      );
+
+      toast({
+        title: isClientSelected ? 'Photo Selected' : 'Photo Deselected',
+        description: isClientSelected ? 'Marked for client selection' : 'Removed from client selection',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update selection',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -583,7 +645,9 @@ export default function AlbumDetailPage() {
                   onAddPhotos={() => fileInputRef.current?.click()}
                   onShare={() => setShareDialogOpen(true)}
                   onEdit={() => setEditDialogOpen(true)}
-                  onDelete={handleDeleteAlbum} />
+                  onDelete={handleDeleteAlbum}
+                  onExport={handleExportSelections}
+                />
               </div>
               {/* <AlbumActions
                 onAddPhotos={() => fileInputRef.current?.click()}
@@ -676,6 +740,7 @@ export default function AlbumDetailPage() {
           hasSelection={selectedPhotos.size > 0}
           onPhotoClick={openImagePreview}
           onPhotoSelect={togglePhotoSelection}
+          onSelectionToggle={handleSelectionToggle}
         />
 
         {/* Infinite Scroll Sentinel */}
@@ -704,6 +769,7 @@ export default function AlbumDetailPage() {
           onResetZoom={handleResetZoom}
           photoPersons={photos[imagePreview.currentIndex] ? photoPersons[photos[imagePreview.currentIndex]._id] : undefined}
           loadingPersons={photos[imagePreview.currentIndex] ? loadingPersons[photos[imagePreview.currentIndex]._id] : false}
+          onSelectionToggle={handleSelectionToggle}
         />
       </div>
     </AppLayout>

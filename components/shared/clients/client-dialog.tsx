@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Client, CreateClientDto, UpdateClientDto } from '@/lib/api/clients';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ClientDialogProps {
     open: boolean;
@@ -25,6 +26,7 @@ interface ClientDialogProps {
 
 export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialogProps) {
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [formData, setFormData] = useState<CreateClientDto>({
         firstName: '',
         lastName: '',
@@ -54,17 +56,22 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                 notes: '',
             });
         }
+        setError(null);
     }, [client, open]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
+        setError(null);
+
         try {
             await onSave(formData);
             onOpenChange(false);
         } catch (error) {
             console.error('Failed to save client:', error);
+            setError(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+            setTimeout(() => setError(null), 3000);
         } finally {
             setLoading(false);
         }
@@ -76,7 +83,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>{client ? 'Edit Client' : 'Add New Client'}</DialogTitle>
                     <DialogDescription>
@@ -86,8 +93,8 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="grid gap-4 py-4">
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    <div className="grid gap-4 py-4 overflow-y-auto px-1">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="firstName">First Name *</Label>
@@ -155,6 +162,15 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                             />
                         </div>
                     </div>
+
+                    {error && (
+                        <div className="px-1 mb-4">
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        </div>
+                    )}
 
                     <DialogFooter>
                         <Button

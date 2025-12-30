@@ -12,9 +12,19 @@ interface PhotoCardProps {
     hasSelection?: boolean;
     onSelect: (photoId: string, e: React.MouseEvent) => void;
     onClick: () => void;
+    canDownload?: boolean;
+    onDownload?: () => void;
 }
 
-export const PhotoCard = memo(function PhotoCard({ photo, isSelected, hasSelection = false, onSelect, onClick }: PhotoCardProps) {
+export const PhotoCard = memo(function PhotoCard({
+    photo,
+    isSelected,
+    hasSelection = false,
+    onSelect,
+    onClick,
+    canDownload = true,
+    onDownload
+}: PhotoCardProps) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
@@ -48,7 +58,7 @@ export const PhotoCard = memo(function PhotoCard({ photo, isSelected, hasSelecti
     const handleCardClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         // If in selection mode, clicking the card selects/deselects it
-        if (hasSelection) {
+        if (hasSelection && false) {
             onSelect(photo._id, e);
         } else {
             // Otherwise, open the preview
@@ -63,27 +73,29 @@ export const PhotoCard = memo(function PhotoCard({ photo, isSelected, hasSelecti
                 className={`group relative overflow-hidden rounded-lg bg-muted hover:shadow-xl transition-all duration-300 cursor-pointer ${isSelected ? 'scale-95 opacity-70' : ''
                     }`}
             >
-                {/* Selection Circle Button */}
-                <div
-                    className={`absolute top-3 left-3 z-20 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onSelect(photo._id, e);
-                    }}
-                >
+                {/* Selection Circle Button - Only show if selection is enabled */}
+                {hasSelection && (
                     <div
-                        className={`w-6 h-6 rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 ${isSelected
-                            ? 'bg-primary border-2 border-primary shadow-lg'
-                            : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
+                        className={`absolute top-3 left-3 z-20 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                             }`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect(photo._id, e);
+                        }}
                     >
-                        {!isSelected && (
-                            <Check className="h-4 w-4 text-transparent hover:scale-110 hover:text-primary" />
-                        )}
-                        {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
+                        <div
+                            className={`w-6 h-6 rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 ${isSelected
+                                ? 'bg-primary border-2 border-primary shadow-lg'
+                                : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
+                                }`}
+                        >
+                            {!isSelected && (
+                                <Check className="h-4 w-4 text-transparent hover:scale-110 hover:text-primary" />
+                            )}
+                            {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {photo.url || photo.thumbnailUrl ? (
                     <div className="relative w-full" style={{ aspectRatio: photo.width && photo.height ? `${photo.width}/${photo.height}` : '1/1' }}>
@@ -149,20 +161,26 @@ export const PhotoCard = memo(function PhotoCard({ photo, isSelected, hasSelecti
                         >
                             <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const link = document.createElement('a');
-                                link.href = photo.url || photo.thumbnailUrl || '';
-                                link.download = photo.originalName;
-                                link.click();
-                            }}
-                        >
-                            <Download className="h-4 w-4" />
-                        </Button>
+                        {canDownload && (
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onDownload) {
+                                        onDownload();
+                                    } else {
+                                        const link = document.createElement('a');
+                                        link.href = photo.url || photo.thumbnailUrl || '';
+                                        link.download = photo.originalName;
+                                        link.click();
+                                    }
+                                }}
+                            >
+                                <Download className="h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -170,7 +188,7 @@ export const PhotoCard = memo(function PhotoCard({ photo, isSelected, hasSelecti
                 {photo.favoritesCount > 0 && (
                     <Badge
                         variant="secondary"
-                        className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm group-hover:opacity-0 transition-opacity"
+                        className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm group-hover:opacity-0 transition-opacity"
                     >
                         <Heart className="h-3 w-3 mr-1 fill-current text-red-500" />
                         {photo.favoritesCount}

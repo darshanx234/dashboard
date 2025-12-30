@@ -11,6 +11,7 @@ import {
     Download,
     ChevronLeft,
     ChevronRight,
+    Check,
 } from 'lucide-react';
 import { type Photo, type SharePermissions } from '@/lib/api/albums';
 import { PhotoFavoriteButton } from '@/components/shared/PhotoFavoriteButton';
@@ -37,6 +38,7 @@ interface ImagePreviewProps {
     onDownload: (photo: Photo) => void;
     onFavoriteToggle: (photoId: string, isFavorite: boolean) => Promise<void>;
     onAddComment: (photoId: string, comment: string) => Promise<void>;
+    onSelectionToggle: (photoId: string, isSelected: boolean) => Promise<void>;
 }
 
 type DrawerType = 'activity' | 'info' | null;
@@ -55,6 +57,7 @@ export function ImagePreview({
     onDownload,
     onFavoriteToggle,
     onAddComment,
+    onSelectionToggle,
 }: ImagePreviewProps) {
     const [activeDrawer, setActiveDrawer] = useState<DrawerType>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(currentIndex);
@@ -117,9 +120,10 @@ export function ImagePreview({
     if (!isOpen || !currentPhoto) return null;
 
     return (
-        <div className="fixed inset-0 z-[10] bg-black flex items-center justify-center" style={{ margin: 0 }}>
+        <div className="fixed inset-0 z-[10] bg-black flex flex-col" style={{ margin: 0 }}>
             {/* Top Bar */}
-            <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-4">
+            <div className="border-b border-gray-600 p-4 shrink-0">
+
                 <div className="flex items-center justify-between">
                     <Button
                         variant="ghost"
@@ -129,8 +133,25 @@ export function ImagePreview({
                     >
                         <X className="h-6 w-6" />
                     </Button>
-
+                    {/* Image Counter */}
+                    <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+                        <span className="text-white text-sm font-medium">
+                            {currentPhotoIndex + 1} / {photos.length}
+                        </span>
+                    </div>
                     <div className="flex items-center gap-2">
+                        <Button
+                            variant={currentPhoto.isClientSelected ? "default" : "ghost"}
+                            size="icon"
+                            className={`h-10 w-10 ${currentPhoto.isClientSelected ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-white hover:bg-white/10'}`}
+                            onClick={async () => {
+                                await onSelectionToggle(currentPhoto._id, !currentPhoto.isClientSelected);
+                            }}
+                            title={currentPhoto.isClientSelected ? "Selected" : "Select Photo"}
+                        >
+                            <Check className="h-5 w-5" />
+                        </Button>
+
                         <Button
                             variant="ghost"
                             size="icon"
@@ -163,15 +184,8 @@ export function ImagePreview({
                 </div>
             </div>
 
-            {/* Image Counter */}
-            <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                <span className="text-white text-sm font-medium">
-                    {currentPhotoIndex + 1} / {photos.length}
-                </span>
-            </div>
-
             {/* Image Display */}
-            <div className="w-full h-full relative flex items-center justify-center p-4">
+            <div className="relative flex-1 flex items-center justify-center overflow-hidden p-1">
                 {/* Previous Button */}
                 {currentPhotoIndex > 0 && (
                     <Button
@@ -190,17 +204,17 @@ export function ImagePreview({
                         ref={imageRef}
                         src={currentPhoto.url || currentPhoto.thumbnailUrl}
                         alt={currentPhoto.originalName}
-                        className="max-w-full max-h-full object-contain select-none transition-transform duration-200"
+                        className="rounded-lg max-w-full max-h-full object-contain select-none transition-transform duration-200"
                         style={{ transform: `scale(${zoom})` }}
                         draggable={false}
-                        onClick={(e) => {
-                            // Toggle zoom on click
-                            if (zoom === 1) {
-                                setZoom(2);
-                            } else {
-                                setZoom(1);
-                            }
-                        }}
+                    // onClick={(e) => {
+                    //     // Toggle zoom on click
+                    //     if (zoom === 1) {
+                    //         setZoom(2);
+                    //     } else {
+                    //         setZoom(1);
+                    //     }
+                    // }}
                     />
                 </div>
 
@@ -218,7 +232,7 @@ export function ImagePreview({
             </div>
 
             {/* Bottom Right Action Buttons */}
-            {!activeDrawer && (
+            {!activeDrawer && false && (
                 <div className="absolute bottom-6 right-6 z-10 flex items-center gap-3">
                     {/* Like Button */}
                     {permissions?.canFavorite && (
@@ -256,7 +270,7 @@ export function ImagePreview({
             )}
 
             {/* Activity Drawer */}
-            {activeDrawer === 'activity' && (
+            {activeDrawer === 'activity' && false && (
                 <>
                     <div
                         className="absolute inset-0 bg-black/40 z-20 transition-opacity duration-300"
@@ -290,7 +304,7 @@ export function ImagePreview({
                                         photoId={currentPhoto._id}
                                         comments={photoComments[currentPhoto._id] || []}
                                         onAddComment={onAddComment}
-                                        canComment={permissions.canComment}
+                                        canComment={permissions?.canComment ?? false}
                                     />
                                 </div>
                             )}
@@ -369,6 +383,28 @@ export function ImagePreview({
                     </div>
                 </>
             )}
+
+            <div className="border-t border-gray-600 shrink-0">
+                <div className='h-[80px] w-full bg-white p-1'>
+                    <div
+                        onWheel={(e) => {
+                            e.currentTarget.scrollLeft += e.deltaY;
+                        }}
+                        className='flex h-full w-full gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
+                        {photos.length && photos.map((obj, index) => {
+                            return (
+                                <div>
+                                    <img
+                                        src={obj.url || obj.thumbnailUrl}
+                                        alt={obj.originalName}
+                                        className={`rounded-md h-full min-w-[100px] max-w-[100px] object-cover ${currentPhotoIndex === index ? 'border-2 border-primary' : ''}`}
+                                    />
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

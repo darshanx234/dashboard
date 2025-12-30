@@ -96,6 +96,7 @@ export async function GET(
             views: photo.views,
             downloads: photo.downloads,
             favoritesCount: photo.favoritesCount,
+            isClientSelected:photo.isClientSelected,
           };
         } catch (error) {
           console.error(`Failed to generate URL for photo ${photo._id}:`, error);

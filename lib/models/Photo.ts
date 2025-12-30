@@ -46,6 +46,8 @@ export interface IPhoto extends Document {
   favoritesCount: number;
   personsCount: number; // Number of detected persons in this photo
   isFaceDetectionProcessed: boolean; // Whether face detection has been run
+  likesCount: number;
+  isClientSelected: boolean;
   status: 'uploading' | 'processing' | 'ready' | 'error';
   createdAt: Date;
   updatedAt: Date;
@@ -167,6 +169,14 @@ const PhotoSchema: Schema = new Schema(
       min: 0,
     },
     isFaceDetectionProcessed: {
+      type: Boolean,
+      default: false,
+    },
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
+    isClientSelected: {
       type: Boolean,
       default: false,
     },
