@@ -25,6 +25,7 @@ export async function publishEnrollJob(data: {
     uploadedBy: string;
     imageUri: string;
     downloadUrl: string;
+    albumId: string;
 }): Promise<boolean> {
     try {
         // Validate queue URL
@@ -49,6 +50,10 @@ export async function publishEnrollJob(data: {
                     DataType: 'String',
                     StringValue: data.uploadedBy,
                 },
+                albumId: {
+                    DataType: 'String',
+                    StringValue: data.albumId,
+                },
             },
         });
 
@@ -58,6 +63,7 @@ export async function publishEnrollJob(data: {
             console.log('📤 Published SQS job:', {
                 messageId: response.MessageId,
                 photoId: data.photoId,
+                albumId: data.albumId,
             });
             return true;
         } else {

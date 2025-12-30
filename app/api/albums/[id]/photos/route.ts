@@ -226,6 +226,7 @@ export async function POST(
         uploadedBy: decoded.userId,
         imageUri: body.s3Key,
         downloadUrl: downloadUrl, // Presigned URL for worker to download
+        albumId: id,
       });
       console.log(`✅ Published face detection job for photo ${photo._id}`);
     } catch (error) {
