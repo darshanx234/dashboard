@@ -33,8 +33,8 @@ import {
 import Link from 'next/link';
 import { albumApi, photoApi, uploadApi, type Album, type Photo } from '@/lib/api/albums';
 import { useToast } from '@/hooks/use-toast';
-import { ShareDialog } from '@/components/albums/share-dialog';
-import { EditAlbumDialog } from '@/components/albums/edit-album-dialog';
+import { ShareDialog } from '@/components/shared/albums/share-dialog';
+import { EditAlbumDialog } from '@/components/shared/albums/edit-album-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
@@ -62,8 +62,8 @@ interface ImagePreviewState {
 }
 
 // Move S3 env variables to top-level constants for client-side usage
-const S3_BUCKET =  'photoalumnus';
-const S3_REGION =  'ap-south-1';
+const S3_BUCKET = 'photoalumnus';
+const S3_REGION = 'ap-south-1';
 
 export default function AlbumDetailPage() {
   const params = useParams();
@@ -237,6 +237,7 @@ export default function AlbumDetailPage() {
         );
 
         // Step 2: Upload to S3
+        console.log('Uploading to S3...3');
         await uploadApi.uploadToS3(uploadUrl, file);
 
         setUploadingFiles((prev) =>
@@ -573,7 +574,7 @@ export default function AlbumDetailPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {selectedPhotos.size < photos.length && (
                   <Button variant="outline" size="sm" onClick={selectAllPhotos}>
@@ -581,8 +582,8 @@ export default function AlbumDetailPage() {
                     Select All
                   </Button>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="icon"
                   onClick={deselectAllPhotos}
                   title="Deselect all"
@@ -590,8 +591,8 @@ export default function AlbumDetailPage() {
                   <X className="h-4 w-4" />
                 </Button>
                 <div className="w-px h-6 bg-border mx-1" />
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="icon"
                   onClick={() => setDeleteDialogOpen(true)}
                   title="Delete selected photos"
@@ -699,7 +700,7 @@ export default function AlbumDetailPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting} onClick={() => setDeleteDialogOpen(false)  }>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDeleting} onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteSelectedPhotos}
                 disabled={isDeleting}
@@ -771,7 +772,7 @@ export default function AlbumDetailPage() {
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>  
+                  </div>
 
                   {/* Progress Overview Bar */}
                   <div className="px-4 pt-3 pb-2 bg-muted/30 border-b">
@@ -936,11 +937,11 @@ export default function AlbumDetailPage() {
                       >
                         <div
                           className={`w-6 h-6 rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 ${isSelected
-                              ? 'bg-primary border-2 border-primary shadow-lg'
-                              : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
+                            ? 'bg-primary border-2 border-primary shadow-lg'
+                            : 'bg-white/10 border-2 border-white/50 hover:bg-white hover:border-white hover:scale-110'
                             }`}
                         >
-                          { !isSelected && <Check className="h-4 w-4 text-transparent hover:scale-110 hover:text-primary" />}
+                          {!isSelected && <Check className="h-4 w-4 text-transparent hover:scale-110 hover:text-primary" />}
                           {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
                         </div>
                       </div>

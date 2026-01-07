@@ -27,7 +27,6 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
 
-  console.log(user);
   const handleLogout = async () => {
     try {
       await logout();

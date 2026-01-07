@@ -118,7 +118,6 @@ export async function POST(
     if (!isOwner) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
-
     // Create photo record
     const photo = await Photo.create({
       albumId: id,
@@ -137,6 +136,7 @@ export async function POST(
       lens: body.lens,
       settings: body.settings,
       order: body.order || 0,
+      md5Hash: body.md5Hash,
       status: 'ready',
       isProcessed: true,
       isClientSelected: false,

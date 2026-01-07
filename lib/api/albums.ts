@@ -1,4 +1,5 @@
 import { getWithAuth, postWithAuth, putWithAuth, deleteWithAuth } from '@/lib/utils/api-client';
+import SparkMD5 from 'spark-md5';
 
 // Types
 export interface Album {
@@ -62,6 +63,7 @@ export interface Photo {
   downloads: number;
   favoritesCount: number;
   isClientSelected: boolean;
+  md5Hash?: string;
   status: 'uploading' | 'processing' | 'ready' | 'error';
   createdAt: string;
   updatedAt: string;
@@ -111,6 +113,7 @@ export interface CreatePhotoData {
     focalLength?: string;
   };
   order?: number;
+  md5Hash?: string;
 }
 
 // Album APIs
@@ -214,6 +217,7 @@ export const uploadApi = {
   },
 
   // Upload file directly to S3 using pre-signed URL
+
   async uploadToS3(url: string, file: File, signal?: AbortSignal) {
     const response = await fetch(url, {
       method: 'PUT',
@@ -243,7 +247,12 @@ export const uploadApi = {
       });
 
       // Step 2: Upload to S3
+      console.log('Uploading to S3...2');
       await this.uploadToS3(uploadUrl, file);
+
+      // Step 2.5: Calculate MD5 hash
+      const md5Hash = await calculateMD5(file);
+      console.log('Calculated MD5 hash:', md5Hash);
 
       // Step 3: Get file dimensions if it's an image
       let width: number | undefined;
@@ -268,6 +277,7 @@ export const uploadApi = {
         width,
         height,
         order: order || 0,
+        md5Hash,
       });
 
       return photo;
@@ -603,8 +613,24 @@ export const shareApi = {
     return response.json();
   },
 };
+ 
+ // Helper function to calculate MD5 hash of a file
+ const calculateMD5 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
 
-// Helper function to get image dimensions
+    reader.onload = (e) => {
+      const buffer = e.target?.result as ArrayBuffer;
+      const hash = SparkMD5.ArrayBuffer.hash(buffer);
+      resolve(hash);
+    };
+
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+};
+ 
+ // Helper function to get image dimensions
 function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();

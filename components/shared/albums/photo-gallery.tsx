@@ -1,11 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Image as ImageIcon } from 'lucide-react';
 import { PhotoCard } from './photo-card';
 import type { Photo, SharePermissions } from '@/lib/api/albums';
 import { ImagePreview } from '../ImagePreview';
+
+import LightGallery from 'lightgallery/react';
+
+// import styles
+import 'lightgallery/css/lightgallery.css';
+import 'lightgallery/css/lg-zoom.css';
+import 'lightgallery/css/lg-thumbnail.css';
+
+import lgThumbnail from 'lightgallery/plugins/thumbnail';
+
 
 interface PhotoGalleryProps {
     photos: Photo[];
@@ -48,6 +58,7 @@ export function PhotoGallery({
     // Internal preview state
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewIndex, setPreviewIndex] = useState(0);
+    const lightGalleryRef = useRef<any>(null);
 
     const handlePhotoClick = (index: number) => {
         if (onPhotoClick) {
@@ -78,21 +89,68 @@ export function PhotoGallery({
         );
     }
 
+    const onInit = () => {
+        console.log('lightGallery has been initialized');
+    };
+
     return (
         <>
-            <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
-                {photos.map((photo, index) => (
-                    <PhotoCard
-                        key={photo._id}
-                        photo={photo}
-                        isSelected={selectedPhotos.has(photo._id) || photo.isClientSelected}
-                        hasSelection={hasSelection}
-                        onSelect={onPhotoSelect}
-                        onClick={() => handlePhotoClick(index)}
-                        canDownload={canDownload}
-                        onDownload={onDownload ? () => onDownload(photo) : undefined}
-                    />
-                ))}
+            <div className="">
+                {/* {photos.map((photo, index) => (
+                    <div key={photo._id} className="w-[calc(50%-8px)] md:w-[calc(33.333%-8px)] lg:w-[calc(25%-12px)]">
+                        <div>{index + 1}</div>
+                        <PhotoCard
+                            key={photo._id}
+                            photo={photo}
+                            isSelected={selectedPhotos.has(photo._id) || photo.isClientSelected}
+                            hasSelection={hasSelection}
+                            onSelect={onPhotoSelect}
+                            onClick={() => handlePhotoClick(index)}
+                            canDownload={canDownload}
+                            onDownload={onDownload ? () => onDownload(photo) : undefined}
+                        />
+                    </div>
+                ))} */}
+                <LightGallery
+                    onInit={(detail) => {
+                        lightGalleryRef.current = detail.instance;
+                    }}
+                    // dynamic={true}
+                    speed={500}
+                    plugins={[lgThumbnail]}
+                    elementClassNames="columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-4"
+                    mode="lg-fade"
+                    addClass="lg-zoom-from-origin"
+                    startAnimationDuration={400}
+                    backdropDuration={400}
+                >
+                    {photos.map((photo, index) => (
+                        <a
+                            key={index}
+                            className="mb-4"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // openImagePreview(index);
+                            }}
+                            href={photo.url || photo.thumbnailUrl || ''}
+                            data-src={photo.url || photo.thumbnailUrl || ''}
+                            data-lg-size={photo.width + '-' + photo.height}
+                        >
+                            {index}
+                            <img src={photo.thumbnailUrl} width={200} />
+                            {/* <PhotoCard
+                                key={photo._id}
+                                photo={photo}
+                                isSelected={selectedPhotos.has(photo._id) || photo.isClientSelected}
+                                hasSelection={hasSelection}
+                                onSelect={onPhotoSelect}
+                                onClick={() => handlePhotoClick(index)}
+                                canDownload={canDownload}
+                                onDownload={onDownload ? () => onDownload(photo) : undefined}
+                            /> */}
+                        </a>
+                    ))}
+                </LightGallery>
             </div>
 
             {useInternalPreview && (

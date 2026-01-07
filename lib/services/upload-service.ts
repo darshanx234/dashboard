@@ -1,4 +1,5 @@
 import { uploadApi, photoApi, type Photo } from '@/lib/api/albums';
+import SparkMD5 from 'spark-md5';
 
 // S3 constants
 const S3_BUCKET = 'photoalumnus';
@@ -130,6 +131,7 @@ export class UploadService {
 
             // Step 2: Upload to S3 (30%)
             this.updateProgress(task, 30);
+            console.log('Uploading to S3...1');
             await uploadApi.uploadToS3(uploadUrl, task.file, abortController.signal);
 
             // Check if cancelled
@@ -160,7 +162,8 @@ export class UploadService {
             // Step 4: Create photo record (80%)
             this.updateProgress(task, 80);
             const s3Url = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${s3Key}`;
-
+            const md5Hash = await calculateMD5(task.file);
+            console.log('Calculated MD5 hash:', md5Hash);
             const { photo } = await photoApi.createPhoto(task.albumId, {
                 filename: task.file.name,
                 originalName: task.file.name,
@@ -170,6 +173,7 @@ export class UploadService {
                 mimeType: task.file.type,
                 width,
                 height,
+                md5Hash,
                 order: 0, // Will be set by backend
             });
 
@@ -204,7 +208,7 @@ export class UploadService {
                 task.status = 'error';
                 task.error = error.message || 'Upload failed';
                 this.callbacks.onStatusChange(task.id, 'error');
-                this.callbacks.onError(task.id, task.error);
+                this.callbacks.onError(task.id, task.error || 'Upload failed');
             }
         } finally {
             this.activeUploads.delete(task.id);
@@ -340,3 +344,20 @@ export class UploadService {
         this.activeUploads.clear();
     }
 }
+
+
+ // Helper function to calculate MD5 hash of a file
+ const calculateMD5 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const buffer = e.target?.result as ArrayBuffer;
+      const hash = SparkMD5.ArrayBuffer.hash(buffer);
+      resolve(hash);
+    };
+
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+};

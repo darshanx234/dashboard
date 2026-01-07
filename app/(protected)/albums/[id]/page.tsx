@@ -358,9 +358,8 @@ export default function AlbumDetailPage() {
     // Prepare data for Excel
     const data = selectedPhotosList.map(photo => ({
       Filename: photo.originalName,
-      'File Size': (photo.fileSize / 1024 / 1024).toFixed(2) + ' MB',
-      'Resolution': `${photo.width} x ${photo.height}`,
-      'Upload Date': new Date(photo.createdAt).toLocaleDateString(),
+      Size: photo.fileSize,
+      Hash: photo.md5Hash,
     }));
 
     // Create worksheet
