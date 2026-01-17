@@ -30,19 +30,29 @@ export function generateS3Key(photographerId: string, albumId: string, filename:
   const randomString = Math.random().toString(36).substring(2, 15);
   const extension = filename.split('.').pop();
   
-  return `photos/${photographerId}/${albumId}/${timestamp}-${randomString}.${extension}`;
+  // New structure: photographerId/albumId/original/timestamp-randomString.extension
+  return `${photographerId}/${albumId}/original/${timestamp}-${randomString}.${extension}`;
 }
 
 /**
  * Generate S3 key for thumbnail
  */
 export function generateThumbnailKey(originalKey: string): string {
+  // originalKey is like: photographerId/albumId/original/filename.ext
   const parts = originalKey.split('/');
+  
+  // Replace 'original' folder with 'thumbnails' if present
+  // If the structure matches our new format (length >= 2 and second to last is 'original'), swap it
+  if (parts.length >= 2 && parts[parts.length - 2] === 'original') {
+    parts[parts.length - 2] = 'thumbnails';
+  }
+  
   const filename = parts[parts.length - 1];
   const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
   const extension = filename.split('.').pop();
   
   parts[parts.length - 1] = `${nameWithoutExt}_thumb.${extension}`;
+  
   return parts.join('/');
 }
 
@@ -167,5 +177,6 @@ export function getPublicUrl(key: string): string {
   }
   return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
 }
+
 
 export default s3Client;

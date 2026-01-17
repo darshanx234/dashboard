@@ -50,18 +50,37 @@ export async function GET(
 
     const total = await Photo.countDocuments({ albumId: id });
 
+    function getResizedS3Key(originalKey: string, folder: 'webp' | 'view'): string {
+      // Logic: userId/albumId/original/photo.jpg -> userId/albumId/webp/photo.webp
+      const baseKey = originalKey.replace('/original/', `/${folder}/`);
+
+      if (folder === 'webp') {
+        // Strip old extension and add .webp
+        return baseKey.substring(0, baseKey.lastIndexOf('.')) + '.webp';
+      }
+
+      // For 'view', we usually keep the .jpg extension as per your Lambda
+      return baseKey;
+    }
     // Generate presigned URLs for each photo
     const photosWithUrls = await Promise.all(
       photos.map(async (photo: any) => {
         try {
-          // Generate presigned URL for the main photo
-          const signedUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600); // 1 hour expiry
+          // 1. Generate Key paths
+          const webpKey = getResizedS3Key(photo.s3Key, 'webp');
+          const viewKey = getResizedS3Key(photo.s3Key, 'view');
+          console.log(webpKey, viewKey, photo.s3Key);
+          const [originalUrl, optimizedUrl, thumbnailUrl] = await Promise.all([
+            generatePresignedDownloadUrl(photo.s3Key, 3600), // Original
+            generatePresignedDownloadUrl(viewKey, 3600),     // View/Thumbnail version
+            generatePresignedDownloadUrl(webpKey, 3600)     // WebP version
+          ]);
 
           return {
             ...photo,
-            url: signedUrl,
-            // Use the presigned URL for thumbnail as well (or keep existing if available)
-            thumbnailUrl: signedUrl,
+            url: optimizedUrl,       // Main URL used by <Image />
+            thumbnailUrl: thumbnailUrl,
+            downloadUrl: originalUrl, // Full resolution link
           };
         } catch (error) {
           console.error(`Failed to generate URL for photo ${photo._id}:`, error);
@@ -144,7 +163,7 @@ export async function POST(
 
     // Update album photo count and storage used
     await Album.findByIdAndUpdate(id, {
-      $inc: { 
+      $inc: {
         totalPhotos: 1,
         storageUsed: body.fileSize || 0
       },
@@ -233,9 +252,9 @@ export async function DELETE(
 
     // Update album photo count and storage used
     const totalSize = photos.reduce((acc, photo) => acc + (photo.fileSize || 0), 0);
-    
+
     await Album.findByIdAndUpdate(id, {
-      $inc: { 
+      $inc: {
         totalPhotos: -photos.length,
         storageUsed: -totalSize
       },

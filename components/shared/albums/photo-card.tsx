@@ -67,7 +67,7 @@ export const PhotoCard = memo(function PhotoCard({
     };
 
     return (
-        <div className="break-inside-avoid mb-4" onClick={handleCardClick}>
+        <div className="break-inside-avoid mb-2" onClick={handleCardClick}>
             <div
                 ref={containerRef}
                 className={`group relative overflow-hidden rounded-lg bg-muted hover:shadow-xl transition-all duration-300 cursor-pointer ${isSelected ? 'scale-95 opacity-70' : ''

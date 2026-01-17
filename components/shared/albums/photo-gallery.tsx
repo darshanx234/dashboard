@@ -1,26 +1,23 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Image as ImageIcon } from 'lucide-react';
+import { Flag, Image as ImageIcon } from 'lucide-react';
 import { PhotoCard } from './photo-card';
 import type { Photo, SharePermissions } from '@/lib/api/albums';
 import { ImagePreview } from '../ImagePreview';
-
+import Masonry from 'masonry-layout';
+import imagesLoaded from 'imagesloaded';
 import LightGallery from 'lightgallery/react';
-
-// import styles
-import 'lightgallery/css/lightgallery.css';
-import 'lightgallery/css/lg-zoom.css';
-import 'lightgallery/css/lg-thumbnail.css';
-
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
+import lgZoom from 'lightgallery/plugins/zoom';
+import lgShare from 'lightgallery/plugins/share';
+import lgHash from 'lightgallery/plugins/hash';
 
 
 interface PhotoGalleryProps {
     photos: Photo[];
     selectedPhotos: Set<string>;
-    onPhotoClick?: (index: number) => void;
+    onPhotoClick?: ((index: number) => void) | null;
     onPhotoSelect: (photoId: string, e: React.MouseEvent) => void;
     hasSelection?: boolean;
     canDownload?: boolean;
@@ -40,7 +37,7 @@ interface PhotoGalleryProps {
 export function PhotoGallery({
     photos,
     selectedPhotos,
-    onPhotoClick,
+    onPhotoClick = null,
     onPhotoSelect,
     hasSelection = false,
     canDownload = true,
@@ -89,68 +86,53 @@ export function PhotoGallery({
         );
     }
 
-    const onInit = () => {
-        console.log('lightGallery has been initialized');
-    };
+    useEffect(() => {
+        // Ensure the DOM element exists
+        const container = document.querySelector('.masonry-gallery-demo');
+        console.log("dsfds", container);
+        if (container) {
+            // Initialize Masonry
+            const msnry = new Masonry(container, {
+                itemSelector: '.gallery-item',
+                columnWidth: '.grid-sizer',
+                percentPosition: true,
+            });
+
+            // Use imagesLoaded with Masonry
+            imagesLoaded(container).on('progress', function () {
+                // Layout Masonry after each image loads
+                msnry.layout();
+            });
+        }
+    }, []);
 
     return (
         <>
-            <div className="">
-                {/* {photos.map((photo, index) => (
-                    <div key={photo._id} className="w-[calc(50%-8px)] md:w-[calc(33.333%-8px)] lg:w-[calc(25%-12px)]">
-                        <div>{index + 1}</div>
+            <div
+                className={'masonry-gallery-demo'}
+            // plugins={[lgZoom, lgShare, lgHash]}
+            // speed={500}
+            >
+                <div className="grid-sizer"></div>
+                {photos.map((photo, index) => (
+                    <div key={photo._id} className="lg-item gallery-item" data-src={null} data-sub-html={null}>
+                        {/* <div className='absolute top-2 left-2 z-10'>{index + 1}</div> */}
                         <PhotoCard
                             key={photo._id}
                             photo={photo}
                             isSelected={selectedPhotos.has(photo._id) || photo.isClientSelected}
                             hasSelection={hasSelection}
                             onSelect={onPhotoSelect}
-                            onClick={() => handlePhotoClick(index)}
+                            onClick={() => {
+                                // e.stopPropagation();
+                                // e.preventDefault();
+                                handlePhotoClick(index)
+                            }}
                             canDownload={canDownload}
                             onDownload={onDownload ? () => onDownload(photo) : undefined}
                         />
                     </div>
-                ))} */}
-                <LightGallery
-                    onInit={(detail) => {
-                        lightGalleryRef.current = detail.instance;
-                    }}
-                    // dynamic={true}
-                    speed={500}
-                    plugins={[lgThumbnail]}
-                    elementClassNames="columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-4"
-                    mode="lg-fade"
-                    addClass="lg-zoom-from-origin"
-                    startAnimationDuration={400}
-                    backdropDuration={400}
-                >
-                    {photos.map((photo, index) => (
-                        <a
-                            key={index}
-                            className="mb-4"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // openImagePreview(index);
-                            }}
-                            href={photo.url || photo.thumbnailUrl || ''}
-                            data-src={photo.url || photo.thumbnailUrl || ''}
-                            data-lg-size={photo.width + '-' + photo.height}
-                        >
-                            {index}
-                            <img src={photo.thumbnailUrl} width={200} />
-                            {/* <PhotoCard
-                                key={photo._id}
-                                photo={photo}
-                                isSelected={selectedPhotos.has(photo._id) || photo.isClientSelected}
-                                hasSelection={hasSelection}
-                                onSelect={onPhotoSelect}
-                                onClick={() => handlePhotoClick(index)}
-                                canDownload={canDownload}
-                                onDownload={onDownload ? () => onDownload(photo) : undefined}
-                            /> */}
-                        </a>
-                    ))}
-                </LightGallery>
+                ))}
             </div>
 
             {useInternalPreview && (

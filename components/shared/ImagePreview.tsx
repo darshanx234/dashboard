@@ -1,6 +1,6 @@
-'use client';
+// 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Heart,
@@ -12,6 +12,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Check,
+    CircleChevronRight,
+    CircleChevronLeft,
 } from 'lucide-react';
 import { type Photo, type SharePermissions } from '@/lib/api/albums';
 import { PhotoFavoriteButton } from '@/components/shared/PhotoFavoriteButton';
@@ -23,6 +25,9 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
+import useEmblaCarousel from 'embla-carousel-react'
+import { LazyLoadImage } from './LazyLoadImage';
+import { EmblaCarouselType } from 'embla-carousel'
 
 interface ImagePreviewProps {
     isOpen: boolean;
@@ -61,8 +66,65 @@ export function ImagePreview({
 }: ImagePreviewProps) {
     const [activeDrawer, setActiveDrawer] = useState<DrawerType>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(currentIndex);
+    const [slidesInView, setSlidesInView] = useState<number[]>([])
     const [zoom, setZoom] = useState(1);
     const imageRef = useRef<HTMLImageElement>(null);
+    const [emblaRef, emblaApi] = useEmblaCarousel({
+        startIndex: currentIndex
+    });
+
+    const [emblaThumbsRef, emblaThumbsApi] = useEmblaCarousel({
+        containScroll: 'keepSnaps',
+        dragFree: true
+    });
+
+    const onSelect = useCallback(() => {
+        if (!emblaApi || !emblaThumbsApi) return
+        setCurrentPhotoIndex(emblaApi.selectedScrollSnap())
+        emblaThumbsApi.scrollTo(emblaApi.selectedScrollSnap())
+    }, [emblaApi, emblaThumbsApi, setCurrentPhotoIndex]);
+
+    const updateSlidesInView = useCallback((emblaApi: EmblaCarouselType) => {
+        setSlidesInView((slidesInView) => {
+            console.log("slidesInView", emblaApi.slidesInView());
+            if (slidesInView.length === emblaApi.slideNodes().length) {
+                emblaApi.off('slidesInView', updateSlidesInView)
+            }
+            const inView = emblaApi
+                .slidesInView()
+                .filter((index) => !slidesInView.includes(index))
+            return slidesInView.concat(inView)
+            // return inView;
+        })
+    }, [])
+
+    useEffect(() => {
+        if (!emblaApi) return;
+        updateSlidesInView(emblaApi);
+        emblaApi.on('slidesInView', updateSlidesInView)
+        emblaApi.on('reInit', updateSlidesInView)
+        emblaApi.on('select', onSelect);
+        onSelect();
+
+        return () => {
+            emblaApi.off('select', onSelect);
+        };
+    }, [emblaApi]);
+    const scrollPrev = useCallback(() => {
+        if (emblaApi) emblaApi.scrollPrev()
+    }, [emblaApi])
+
+    const scrollNext = useCallback(() => {
+        if (emblaApi) emblaApi.scrollNext()
+    }, [emblaApi]);
+
+    const onThumbClick = useCallback(
+        (index: number) => {
+            if (!emblaApi || !emblaThumbsApi) return
+            emblaApi.scrollTo(index)
+        },
+        [emblaApi, emblaThumbsApi]
+    )
 
     const currentPhoto = photos[currentPhotoIndex];
 
@@ -77,24 +139,6 @@ export function ImagePreview({
         setCurrentPhotoIndex(currentIndex);
     }, [currentIndex]);
 
-    const handlePrevious = () => {
-        if (currentPhotoIndex > 0) {
-            const newIndex = currentPhotoIndex - 1;
-            setCurrentPhotoIndex(newIndex);
-            onNavigate(newIndex);
-            setZoom(1);
-        }
-    };
-
-    const handleNext = () => {
-        if (currentPhotoIndex < photos.length - 1) {
-            const newIndex = currentPhotoIndex + 1;
-            setCurrentPhotoIndex(newIndex);
-            onNavigate(newIndex);
-            setZoom(1);
-        }
-    };
-
     // Keyboard Navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -107,9 +151,9 @@ export function ImagePreview({
                     onClose();
                 }
             } else if (e.key === 'ArrowLeft') {
-                handlePrevious();
+                if (emblaApi) emblaApi.scrollPrev()
             } else if (e.key === 'ArrowRight') {
-                handleNext();
+                if (emblaApi) emblaApi.scrollNext()
             }
         };
 
@@ -120,7 +164,7 @@ export function ImagePreview({
     if (!isOpen || !currentPhoto) return null;
 
     return (
-        <div className="fixed inset-0 z-[10] bg-black flex flex-col" style={{ margin: 0 }}>
+        <div className="fixed inset-0 z-[100] backdrop-blur-sm bg-black/80 flex flex-col" style={{ margin: 0 }}>
             {/* Top Bar */}
             <div className="border-b border-gray-600 p-4 shrink-0">
 
@@ -183,53 +227,45 @@ export function ImagePreview({
                     </div>
                 </div>
             </div>
-
-            {/* Image Display */}
-            <div className="relative flex-1 flex items-center justify-center overflow-hidden p-1">
-                {/* Previous Button */}
-                {currentPhotoIndex > 0 && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute left-4 z-10 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                        onClick={handlePrevious}
-                    >
-                        <ChevronLeft className="h-8 w-8" />
-                    </Button>
-                )}
-
-                {/* Image */}
-                <div className="w-full h-full flex items-center justify-center">
-                    <img
-                        ref={imageRef}
-                        src={currentPhoto.url || currentPhoto.thumbnailUrl}
-                        alt={currentPhoto.originalName}
-                        className="rounded-lg max-w-full max-h-full object-contain select-none transition-transform duration-200"
-                        style={{ transform: `scale(${zoom})` }}
-                        draggable={false}
-                    // onClick={(e) => {
-                    //     // Toggle zoom on click
-                    //     if (zoom === 1) {
-                    //         setZoom(2);
-                    //     } else {
-                    //         setZoom(1);
-                    //     }
-                    // }}
-                    />
+            {/* MIDDLE IMAGE AREA */}
+            <div className="relative flex-1 overflow-hidden">
+                <div className="embla h-full">
+                    <div className="embla__viewport h-full" ref={emblaRef}>
+                        <div className="embla__container h-full py-3">
+                            {photos.map((photo, index) => (
+                                <div
+                                    key={index}
+                                    className="embla__slide h-full px-3 md:px-0"
+                                >
+                                    {/* <img
+                                        src={photo.url || photo.thumbnailUrl}
+                                        alt={photo.originalName}
+                                        draggable={false}
+                                        className="rounded-md max-w-full max-h-full object-contain select-none "
+                                        style={{
+                                            transform: `scale(${zoom})`,
+                                            // filter: 'drop-shadow(0 0 50px rgba(255,255,255,0.35))'
+                                        }}
+                                    /> */}
+                                    <LazyLoadImage
+                                        key={index}
+                                        index={index}
+                                        imgSrc={photo.url || photo.thumbnailUrl}
+                                        inView={slidesInView.indexOf(index) > -1}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <button className="embla__prev absolute top-[50%] left-3 cursor-pointer hover:bg-gray-100/10 rounded-full p-2" onClick={scrollPrev}>
+                        <CircleChevronLeft className="h-8 w-8 text-gray-400" />
+                    </button>
+                    <button className="embla__next absolute top-[50%] right-3 cursor-pointer hover:bg-gray-100/10 rounded-full p-2" onClick={scrollNext}>
+                        <CircleChevronRight className="h-8 w-8 text-gray-400" />
+                    </button>
                 </div>
-
-                {/* Next Button */}
-                {currentPhotoIndex < photos.length - 1 && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-4 z-10 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                        onClick={handleNext}
-                    >
-                        <ChevronRight className="h-8 w-8" />
-                    </Button>
-                )}
             </div>
+
 
             {/* Bottom Right Action Buttons */}
             {!activeDrawer && false && (
@@ -385,17 +421,18 @@ export function ImagePreview({
             )}
 
             <div className="border-t border-gray-600 shrink-0">
-                <div className='h-[80px] w-full bg-white p-1'>
+                <div className='h-[80px] w-full p-1' ref={emblaThumbsRef}>
                     <div
                         onWheel={(e) => {
                             e.currentTarget.scrollLeft += e.deltaY;
                         }}
-                        className='flex h-full w-full gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
+                        className='flex h-full gap-2'>
                         {photos.length && photos.map((obj, index) => {
                             return (
                                 <div>
                                     <img
-                                        src={obj.url || obj.thumbnailUrl}
+                                        onClick={() => onThumbClick(index)}
+                                        src={obj.thumbnailUrl || obj.url}
                                         alt={obj.originalName}
                                         className={`rounded-md h-full min-w-[100px] max-w-[100px] object-cover ${currentPhotoIndex === index ? 'border-2 border-primary' : ''}`}
                                     />
@@ -403,6 +440,23 @@ export function ImagePreview({
                             )
                         })}
                     </div>
+                    {/* <div className="embla-thumbs">
+                        <div className="embla-thumbs__viewport" ref={emblaThumbsRef}>
+                            <div className="embla-thumbs__container gap-2">
+                                {photos.length && photos.map((obj, index) => {
+                                    return (
+                                        <div onClick={() => onThumbClick(index)}>
+                                            <img
+                                                src={obj.thumbnailUrl || obj.url}
+                                                alt={obj.originalName}
+                                                className={`rounded-md h-full min-w-[100px] max-w-[100px] object-cover ${currentPhotoIndex === index ? 'border-2 border-primary' : ''}`}
+                                            />
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    </div> */}
                 </div>
             </div>
         </div>

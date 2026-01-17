@@ -62,7 +62,7 @@ interface ImagePreviewState {
 }
 
 // Move S3 env variables to top-level constants for client-side usage
-const S3_BUCKET = 'photoalumnus';
+const S3_BUCKET = 'shotsspace';
 const S3_REGION = 'ap-south-1';
 
 export default function AlbumDetailPage() {

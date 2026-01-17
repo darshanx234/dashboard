@@ -2,8 +2,8 @@ import { uploadApi, photoApi, type Photo } from '@/lib/api/albums';
 import SparkMD5 from 'spark-md5';
 
 // S3 constants
-const S3_BUCKET = 'photoalumnus';
-const S3_REGION = 'ap-south-1';
+const S3_BUCKET = 'shotsspace';
+const S3_REGION = 'us-east-1';
 
 export interface UploadTask {
     id: string;

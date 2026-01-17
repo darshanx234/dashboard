@@ -264,8 +264,12 @@ export const uploadApi = {
         height = dimensions.height;
       }
 
+      // Move S3 env variables to top-level constants for client-side usage
+      const S3_BUCKET = 'shotsspace';
+      const S3_REGION = 'ap-south-1';
+
       // Step 4: Create photo record in database
-      const s3Url = `https://${'photoalumnus'}.s3.${'ap-south-1'}.amazonaws.com/${s3Key}`;
+      const s3Url = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${s3Key}`;
 
       const { photo } = await photoApi.createPhoto(albumId, {
         filename: file.name,

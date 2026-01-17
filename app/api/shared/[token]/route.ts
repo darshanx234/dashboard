@@ -36,7 +36,7 @@ export async function GET(
     if (share.password) {
       // Verify access token from cookie
       const accessTokenCookie = request.cookies.get('share_access_token')?.value;
-      
+
       if (!accessTokenCookie) {
         // No access token, password verification required
         return NextResponse.json({
@@ -48,7 +48,7 @@ export async function GET(
       try {
         // Verify the JWT token
         const decoded = jwt.verify(accessTokenCookie, JWT_SECRET) as any;
-        
+
         // Check if token is for this share
         if (decoded.shareToken !== params.token) {
           return NextResponse.json({
@@ -77,17 +77,38 @@ export async function GET(
       status: 'ready',
     }).sort({ order: 1, createdAt: 1 });
 
+    function getResizedS3Key(originalKey: string, folder: 'webp' | 'view'): string {
+      // Logic: userId/albumId/original/photo.jpg -> userId/albumId/webp/photo.webp
+      const baseKey = originalKey.replace('/original/', `/${folder}/`);
+
+      if (folder === 'webp') {
+        // Strip old extension and add .webp
+        return baseKey.substring(0, baseKey.lastIndexOf('.')) + '.webp';
+      }
+
+      // For 'view', we usually keep the .jpg extension as per your Lambda
+      return baseKey;
+    }
     // Generate presigned URLs for photos
     const photosWithUrls = await Promise.all(
       photos.map(async (photo: any) => {
         try {
-          const signedUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600);
+          const webpKey = getResizedS3Key(photo.s3Key, 'webp');
+          const viewKey = getResizedS3Key(photo.s3Key, 'view');
+          console.log(webpKey, viewKey, photo.s3Key);
+          const [originalUrl, optimizedUrl, thumbnailUrl] = await Promise.all([
+            generatePresignedDownloadUrl(photo.s3Key, 3600), // Original
+            generatePresignedDownloadUrl(viewKey, 3600),     // View/Thumbnail version
+            generatePresignedDownloadUrl(webpKey, 3600)     // WebP version
+          ]);
+          // const signedUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600);
           return {
             _id: photo._id,
             filename: photo.filename,
             originalName: photo.originalName,
-            url: signedUrl,
-            thumbnailUrl: signedUrl,
+            url: optimizedUrl,       // Main URL used by <Image />
+            thumbnailUrl: thumbnailUrl,
+            downloadUrl: originalUrl, // Full resolution link
             width: photo.width,
             height: photo.height,
             fileSize: photo.fileSize,
@@ -96,7 +117,7 @@ export async function GET(
             views: photo.views,
             downloads: photo.downloads,
             favoritesCount: photo.favoritesCount,
-            isClientSelected:photo.isClientSelected,
+            isClientSelected: photo.isClientSelected,
           };
         } catch (error) {
           console.error(`Failed to generate URL for photo ${photo._id}:`, error);

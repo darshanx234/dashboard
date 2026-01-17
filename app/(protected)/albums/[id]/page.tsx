@@ -697,9 +697,10 @@ export default function AlbumDetailPage() {
           photos={photos}
           selectedPhotos={selectedPhotos}
           hasSelection={selectedPhotos.size > 0}
-          onPhotoClick={openImagePreview}
+          // onPhotoClick={openImagePreview}
           onPhotoSelect={togglePhotoSelection}
           onSelectionToggle={handleSelectionToggle}
+          useInternalPreview={true}
         />
 
         {/* Infinite Scroll Sentinel */}
@@ -715,7 +716,7 @@ export default function AlbumDetailPage() {
         )}
 
         {/* Image Preview Modal */}
-        <ImagePreviewModal
+        {/* <ImagePreviewModal
           photos={photos}
           currentIndex={imagePreview.currentIndex}
           zoom={imagePreview.zoom}
@@ -727,7 +728,7 @@ export default function AlbumDetailPage() {
           onZoomOut={handleZoomOut}
           onResetZoom={handleResetZoom}
           onSelectionToggle={handleSelectionToggle}
-        />
+        /> */}
       </div>
     </AppLayout>
   );
