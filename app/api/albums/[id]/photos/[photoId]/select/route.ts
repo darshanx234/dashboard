@@ -3,16 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDB from '@/lib/db';
 import Album from '@/lib/models/Album';
 import Photo from '@/lib/models/Photo';
-import { verifyToken } from '@/lib/utils/auth';
+import { verifyToken } from '@/lib/auth/jwt';
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { id: string; photoId: string } }
+    { params }: { params: Promise<{ id: string; photoId: string }> }
 ) {
     try {
         await connectToDB();
 
-        const { id: albumId, photoId } = params;
+        const { id: albumId, photoId } = await params;
 
         // 1. Authenticate user
         const authHeader = req.headers.get('authorization');
@@ -52,9 +52,9 @@ export async function POST(
             return NextResponse.json({ message: 'Photo not found' }, { status: 404 });
         }
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: `Photo ${isClientSelected ? 'selected' : 'deselected'} successfully`,
-            photo 
+            photo
         });
 
     } catch (error: any) {

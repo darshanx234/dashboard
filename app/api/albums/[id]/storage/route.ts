@@ -9,9 +9,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // GET /api/albums/[id]/storage - Get album storage information
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: albumId } = await params;
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
@@ -21,7 +22,7 @@ export async function GET(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
 
-    const albumId = params.id;
+
 
     // Get album and verify ownership
     const album = await Album.findById(albumId);
@@ -59,9 +60,10 @@ export async function GET(
 // POST /api/albums/[id]/storage/validate - Validate if a file can be uploaded
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: albumId } = await params;
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
@@ -81,7 +83,7 @@ export async function POST(
 
     await connectDB();
 
-    const albumId = params.id;
+
 
     // Get album and verify ownership
     const album = await Album.findById(albumId);

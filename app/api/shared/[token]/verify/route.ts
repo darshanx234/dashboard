@@ -9,15 +9,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // POST /api/shared/[token]/verify - Verify password for protected album
 export async function POST(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const { token } = await params;
     const body = await request.json();
     await connectDB();
 
     // Find share by access token
     const share = await AlbumShare.findOne({
-      accessToken: params.token,
+      accessToken: token,
       isActive: true,
     });
 
@@ -40,7 +41,7 @@ export async function POST(
     // Generate short-lived access token (1 hour)
     const accessToken = jwt.sign(
       {
-        shareToken: params.token,
+        shareToken: token,
         albumId: share.albumId.toString(),
         shareId: share._id.toString(),
       },
@@ -49,7 +50,7 @@ export async function POST(
     );
 
     // Set HTTP-only cookie with the access token
-    const response = NextResponse.json({ 
+    const response = NextResponse.json({
       verified: true,
       accessToken,
       expiresIn: 3600, // 1 hour in seconds
@@ -60,7 +61,7 @@ export async function POST(
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 3600, // 1 hour
-    //   path: `/shared/${params.token}`,
+      //   path: `/shared/${params.token}`,
     });
 
     return response;

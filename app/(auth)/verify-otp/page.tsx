@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, AlertCircle, Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function VerifyOTPPage() {
+function VerifyOTPContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -322,9 +322,8 @@ export default function VerifyOTPPage() {
             </label>
             <div className="flex gap-2 justify-center" onPaste={handlePaste}>
               {otp.map((digit, index) => (
-                <div>
+                <div key={index}>
                   <input
-                    key={index}
                     id={`otp-${index}`}
                     type="text"
                     inputMode="numeric"
@@ -395,5 +394,17 @@ export default function VerifyOTPPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function VerifyOTPPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <VerifyOTPContent />
+    </Suspense>
   );
 }

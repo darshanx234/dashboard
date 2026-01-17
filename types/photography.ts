@@ -22,3 +22,14 @@ export interface Photo {
   height?: number;
   created_at: string;
 }
+
+export interface Share {
+  id: string;
+  share_token: string;
+  album_id: string;
+  allow_download: boolean;
+  allow_favorites: boolean;
+  password_hash?: string;
+  expires_at?: string;
+  created_at?: string;
+}

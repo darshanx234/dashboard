@@ -7,12 +7,12 @@ import mongoose from 'mongoose';
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { token: string; id: string } }
+    { params }: { params: Promise<{ token: string; id: string }> }
 ) {
     try {
         await connectToDB();
 
-        const { token, id } = params;
+        const { token, id } = await params;
         const photoId = id;
 
         const body = await req.json();
@@ -39,18 +39,18 @@ export async function POST(
         if (!share.isActive) {
             return NextResponse.json({ message: 'Share link inactve' }, { status: 410 });
         }
-        
+
         // 2. Update Photo
-         const photo = await Photo.findOneAndUpdate(
+        const photo = await Photo.findOneAndUpdate(
             { _id: photoId, albumId: share.albumId },
             { isClientSelected: isClientSelected },
             { new: true }
         );
 
         if (!photo) {
-             return NextResponse.json({ message: 'Photo not found or not in this album' }, { status: 404 });
+            return NextResponse.json({ message: 'Photo not found or not in this album' }, { status: 404 });
         }
-console.log(photo);
+        console.log(photo);
         return NextResponse.json(photo);
 
     } catch (error: any) {

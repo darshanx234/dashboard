@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IClient extends Document {
-    _id: string;
+    _id: mongoose.Types.ObjectId;
     photographerId: string;
     firstName: string;
     lastName: string;

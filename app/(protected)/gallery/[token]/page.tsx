@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GalleryView } from '@/components/photography/gallery-view';
 import { Lock, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { GalleryView } from '@/components/shared/photography/gallery-view';
 
 const mockPhotos = [
   {

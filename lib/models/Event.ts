@@ -4,7 +4,7 @@ export type EventType = 'wedding' | 'portrait' | 'corporate' | 'event' | 'other'
 export type EventStatus = 'scheduled' | 'completed' | 'cancelled';
 
 export interface IEvent extends Document {
-    _id: string;
+    _id: mongoose.Types.ObjectId;
     photographerId: string;
     clientId: string;
     albumId?: string;

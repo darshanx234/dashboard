@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlbumCard } from '@/components/photography/album-card';
+// import { AlbumCard } from '@/components/photography/album-card';
 import { Plus, Image } from 'lucide-react';
 import Link from 'next/link';
+import { AlbumCard } from '@/components/shared/photography/album-card';
 
 const mockAlbums = [
   {
@@ -17,7 +18,7 @@ const mockAlbums = [
     date_taken: '2024-07-15',
     location: 'California Coast',
     privacy_setting: 'password_protected' as const,
-    cover_photo_id: null,
+    cover_photo_id: undefined,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     photo_count: 248,
@@ -30,7 +31,7 @@ const mockAlbums = [
     date_taken: '2024-06-20',
     location: 'Downtown Ballroom',
     privacy_setting: 'public' as const,
-    cover_photo_id: null,
+    cover_photo_id: undefined,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     photo_count: 156,
@@ -43,7 +44,7 @@ const mockAlbums = [
     date_taken: '2024-05-10',
     location: 'Studio',
     privacy_setting: 'private' as const,
-    cover_photo_id: null,
+    cover_photo_id: undefined,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     photo_count: 89,

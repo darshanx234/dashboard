@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuth } from '@/lib/auth-middleware';
 import { connectToDatabase } from '@/lib/db';
 import User from '@/lib/models/User';
+import { verifyAuth } from '@/lib/auth/auth-middleware';
 
 /**
  * GET - Get user profile
@@ -71,7 +71,7 @@ export async function PUT(request: NextRequest) {
     const { firstName, lastName, phone, bio, avatar } = body;
 
     await connectToDatabase();
-    
+
     const user = await User.findByIdAndUpdate(
       auth.decoded!.userId,
       {
@@ -85,7 +85,7 @@ export async function PUT(request: NextRequest) {
       { new: true }
     );
 
-    
+
 
     if (!user) {
       return NextResponse.json(

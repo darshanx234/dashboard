@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
-import { AlbumForm } from '@/components/photography/album-form';
-import { PhotoUploader } from '@/components/photography/photo-uploader';
+// import { AlbumForm } from '@/components/photography/album-form';
+// import { PhotoUploader } from '@/components/photography/photo-uploader';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
+import { AlbumForm } from '@/components/shared/photography/album-form';
+import { PhotoUploader } from '@/components/shared/photography/photo-uploader';
 
 export default function NewAlbumPage() {
   const router = useRouter();

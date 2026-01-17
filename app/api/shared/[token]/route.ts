@@ -12,14 +12,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // GET /api/shared/[token] - Access shared album by token
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const { token } = await params;
     await connectDB();
 
     // Find share by access token
     const share = await AlbumShare.findOne({
-      accessToken: params.token,
+      accessToken: token,
       isActive: true,
     });
 
@@ -50,7 +51,7 @@ export async function GET(
         const decoded = jwt.verify(accessTokenCookie, JWT_SECRET) as any;
 
         // Check if token is for this share
-        if (decoded.shareToken !== params.token) {
+        if (decoded.shareToken !== token) {
           return NextResponse.json({
             requiresPassword: true,
             error: 'Invalid access token',
