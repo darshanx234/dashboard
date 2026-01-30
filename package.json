@@ -34,6 +34,7 @@
     "embla-carousel-react": "^8.6.0",
     "formik": "^2.4.9",
     "framer-motion": "^12.23.25",
+    "idb": "^8.0.3",
     "imagesloaded": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
     "lg-thumbnail": "^1.2.1",

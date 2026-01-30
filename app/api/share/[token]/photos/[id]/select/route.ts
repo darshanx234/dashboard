@@ -40,6 +40,14 @@ export async function POST(
             return NextResponse.json({ message: 'Share link inactve' }, { status: 410 });
         }
 
+        // Check if the share has canSelect permission
+        if (!share.permissions?.canSelect) {
+            return NextResponse.json(
+                { message: 'Photo selection is not allowed for this share link' },
+                { status: 403 }
+            );
+        }
+
         // 2. Update Photo
         const photo = await Photo.findOneAndUpdate(
             { _id: photoId, albumId: share.albumId },

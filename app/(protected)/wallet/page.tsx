@@ -7,7 +7,6 @@ import { AddCreditsDialog } from '@/components/wallet/AddCreditsDialog';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Link, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { AppLayout } from '@/components/layout/app-layout';
 
 export default function WalletPage() {
     const router = useRouter();
@@ -20,7 +19,7 @@ export default function WalletPage() {
     };
 
     return (
-        <AppLayout>
+        <>
             <div className="space-y-6">
                 {/* Header with Actions */}
                 <div className="flex items-center justify-between">
@@ -100,6 +99,6 @@ export default function WalletPage() {
                 onOpenChange={setShowAddCredits}
                 onSuccess={handleAddCreditsSuccess}
             />
-        </AppLayout>
+        </>
     );
 }

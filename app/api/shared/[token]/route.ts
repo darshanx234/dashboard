@@ -72,6 +72,30 @@ export async function GET(
       return NextResponse.json({ error: 'Album not found' }, { status: 404 });
     }
 
+    // Check canView permission
+    const canView = share.permissions.canView;
+    if (!canView) {
+      // If view permission is disabled, return album details but NO photos
+      return NextResponse.json({
+        album: {
+          id: album._id,
+          title: album.title,
+          description: album.description,
+          photographerName: album.photographerName,
+          coverPhoto: album.coverPhoto,
+          shootDate: album.shootDate,
+          location: album.location,
+          totalPhotos: album.totalPhotos,
+        },
+        photos: [], // Empty photos
+        permissions: share.permissions,
+        requiresPassword: !!share.password,
+        shareType: share.shareType,
+        linkType: share.linkType,
+        expiresAt: share.expiresAt,
+      });
+    }
+
     // Get photos
     const photos = await Photo.find({
       albumId: share.albumId,
@@ -90,26 +114,34 @@ export async function GET(
       // For 'view', we usually keep the .jpg extension as per your Lambda
       return baseKey;
     }
+
     // Generate presigned URLs for photos
+    const canDownload = share.permissions.canDownload;
+
     const photosWithUrls = await Promise.all(
       photos.map(async (photo: any) => {
         try {
           const webpKey = getResizedS3Key(photo.s3Key, 'webp');
           const viewKey = getResizedS3Key(photo.s3Key, 'view');
-          console.log(webpKey, viewKey, photo.s3Key);
+
+          // Only generate original download URL if permission allowed
+          const downloadUrlPromise = canDownload
+            ? generatePresignedDownloadUrl(photo.s3Key, 3600)
+            : Promise.resolve(undefined);
+
           const [originalUrl, optimizedUrl, thumbnailUrl] = await Promise.all([
-            generatePresignedDownloadUrl(photo.s3Key, 3600), // Original
+            downloadUrlPromise, // Original (only if allowed)
             generatePresignedDownloadUrl(viewKey, 3600),     // View/Thumbnail version
             generatePresignedDownloadUrl(webpKey, 3600)     // WebP version
           ]);
-          // const signedUrl = await generatePresignedDownloadUrl(photo.s3Key, 3600);
+
           return {
             _id: photo._id,
             filename: photo.filename,
             originalName: photo.originalName,
             url: optimizedUrl,       // Main URL used by <Image />
             thumbnailUrl: thumbnailUrl,
-            downloadUrl: originalUrl, // Full resolution link
+            downloadUrl: originalUrl, // Full resolution link (undefined if not allowed)
             width: photo.width,
             height: photo.height,
             fileSize: photo.fileSize,
@@ -156,6 +188,7 @@ export async function GET(
       permissions: share.permissions,
       requiresPassword: !!share.password,
       shareType: share.shareType,
+      linkType: share.linkType,
       expiresAt: share.expiresAt,
     });
   } catch (error: any) {

@@ -184,17 +184,19 @@ export function ImagePreview({
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant={currentPhoto.isClientSelected ? "default" : "ghost"}
-                            size="icon"
-                            className={`h-10 w-10 ${currentPhoto.isClientSelected ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-white hover:bg-white/10'}`}
-                            onClick={async () => {
-                                await onSelectionToggle(currentPhoto._id, !currentPhoto.isClientSelected);
-                            }}
-                            title={currentPhoto.isClientSelected ? "Selected" : "Select Photo"}
-                        >
-                            <Check className="h-5 w-5" />
-                        </Button>
+                        {permissions?.canSelect && (
+                            <Button
+                                variant={currentPhoto.isClientSelected ? "default" : "ghost"}
+                                size="icon"
+                                className={`h-10 w-10 ${currentPhoto.isClientSelected ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-white hover:bg-white/10'}`}
+                                onClick={async () => {
+                                    await onSelectionToggle(currentPhoto._id, !currentPhoto.isClientSelected);
+                                }}
+                                title={currentPhoto.isClientSelected ? "Selected" : "Select Photo"}
+                            >
+                                <Check className="h-5 w-5" />
+                            </Button>
+                        )}
 
                         <Button
                             variant="ghost"

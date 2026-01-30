@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppLayout } from '@/components/layout/app-layout';
 // import { AlbumForm } from '@/components/photography/album-form';
 // import { PhotoUploader } from '@/components/photography/photo-uploader';
 import { Button } from '@/components/ui/button';
@@ -30,26 +29,24 @@ export default function NewAlbumPage() {
   };
 
   return (
-    <AppLayout>
-      <div className="space-y-6 max-w-2xl">
-        <Link href="/photographer">
-          <Button variant="ghost" className="gap-2">
-            <ChevronLeft className="h-4 w-4" />
-            Back to Albums
-          </Button>
-        </Link>
+    <div className="space-y-6 max-w-2xl">
+      <Link href="/photographer">
+        <Button variant="ghost" className="gap-2">
+          <ChevronLeft className="h-4 w-4" />
+          Back to Albums
+        </Button>
+      </Link>
 
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create New Album</h1>
-          <p className="text-muted-foreground mt-2">
-            Add album details and upload your photos
-          </p>
-        </div>
-
-        <AlbumForm onSubmit={handleCreateAlbum} isLoading={isLoading} />
-
-        <PhotoUploader onUpload={handleUpload} isLoading={isLoading} />
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Create New Album</h1>
+        <p className="text-muted-foreground mt-2">
+          Add album details and upload your photos
+        </p>
       </div>
-    </AppLayout>
+
+      <AlbumForm onSubmit={handleCreateAlbum} isLoading={isLoading} />
+
+      <PhotoUploader onUpload={handleUpload} isLoading={isLoading} />
+    </div>
   );
 }

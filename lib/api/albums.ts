@@ -44,6 +44,7 @@ export interface Photo {
   s3Url: string;
   url?: string; // Presigned URL for accessing the photo
   thumbnailUrl?: string; // Presigned URL for thumbnail
+  downloadUrl?: string; // Full resolution download URL
   fileSize: number;
   mimeType: string;
   width?: number;
@@ -298,18 +299,20 @@ export interface SharePermissions {
   canDownload: boolean;
   canFavorite: boolean;
   canComment: boolean;
+  canSelect?: boolean;
 }
 
 export interface AlbumShare {
   _id: string;
   albumId: string;
   photographerId: string;
-  sharedWith: {
+  sharedWith?: {
     userId?: string;
-    email: string;
+    email?: string;
     name?: string;
   };
   shareType: 'link' | 'email' | 'direct';
+  linkType?: 'public' | 'private';
   accessToken?: string;
   expiresAt?: string;
   permissions: SharePermissions;
@@ -324,12 +327,9 @@ export interface AlbumShare {
 }
 
 export interface CreateShareData {
-  shareType: 'link' | 'email';
-  emails?: Array<{ email: string; name?: string }>;
-  permissions?: SharePermissions;
-  expiresAt?: string;
+  linkType: 'public' | 'private';
   password?: string;
-  message?: string;
+  expiresAt?: string;
 }
 
 export interface UpdateShareData {
@@ -348,16 +348,14 @@ export const shareApi = {
 
   // Get all shares for an album
   async getShares(albumId: string): Promise<{
-    shares: AlbumShare[];
-    publicShare?: AlbumShare;
-    privateShares: AlbumShare[];
+    publicLink: AlbumShare | null;
+    privateLink: AlbumShare | null;
     totalShares: number;
   }> {
     const response = await getWithAuth(`/api/albums/${albumId}/share`);
     return response as {
-      shares: AlbumShare[];
-      publicShare?: AlbumShare;
-      privateShares: AlbumShare[];
+      publicLink: AlbumShare | null;
+      privateLink: AlbumShare | null;
       totalShares: number;
     };
   },
@@ -407,6 +405,7 @@ export const shareApi = {
     permissions: SharePermissions;
     requiresPassword: boolean;
     shareType: string;
+    linkType?: string;
     expiresAt?: string;
   }> {
     const response = await fetch(`/api/shared/${token}`, {
@@ -617,9 +616,9 @@ export const shareApi = {
     return response.json();
   },
 };
- 
- // Helper function to calculate MD5 hash of a file
- const calculateMD5 = (file: File): Promise<string> => {
+
+// Helper function to calculate MD5 hash of a file
+const calculateMD5 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -633,8 +632,8 @@ export const shareApi = {
     reader.readAsArrayBuffer(file);
   });
 };
- 
- // Helper function to get image dimensions
+
+// Helper function to get image dimensions
 function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();

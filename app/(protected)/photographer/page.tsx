@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AppLayout } from '@/components/layout/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 // import { AlbumCard } from '@/components/photography/album-card';
@@ -63,64 +62,62 @@ export default function PhotographerDashboard() {
   };
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Albums</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your photo albums and share with clients
-            </p>
-          </div>
-          <Link href="/photographer/albums/new">
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Album
-            </Button>
-          </Link>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Albums</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your photo albums and share with clients
+          </p>
         </div>
+        <Link href="/photographer/albums/new">
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Album
+          </Button>
+        </Link>
+      </div>
 
-        {albums.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {albums.map((album) => (
-              <AlbumCard
-                key={album.id}
-                album={album}
-                onShare={handleShare}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        ) : (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Image className="h-12 w-12 text-muted-foreground mb-4" />
-              <CardTitle className="mb-2">No albums yet</CardTitle>
-              <CardDescription className="mb-6">
-                Create your first album to get started
-              </CardDescription>
-              <Link href="/photographer/albums/new">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Album
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="bg-blue-50 border-blue-200">
-          <CardHeader>
-            <CardTitle className="text-base">Pro Tips</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>✓ Use descriptive titles and dates to organize your albums</p>
-            <p>✓ Set cover photos to make albums more visually appealing</p>
-            <p>✓ Password protect albums for specific clients or events</p>
-            <p>✓ Enable favorites to let clients mark their preferred photos</p>
+      {albums.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {albums.map((album) => (
+            <AlbumCard
+              key={album.id}
+              album={album}
+              onShare={handleShare}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Image className="h-12 w-12 text-muted-foreground mb-4" />
+            <CardTitle className="mb-2">No albums yet</CardTitle>
+            <CardDescription className="mb-6">
+              Create your first album to get started
+            </CardDescription>
+            <Link href="/photographer/albums/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Album
+              </Button>
+            </Link>
           </CardContent>
         </Card>
-      </div>
-    </AppLayout>
+      )}
+
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="text-base">Pro Tips</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-2">
+          <p>✓ Use descriptive titles and dates to organize your albums</p>
+          <p>✓ Set cover photos to make albums more visually appealing</p>
+          <p>✓ Password protect albums for specific clients or events</p>
+          <p>✓ Enable favorites to let clients mark their preferred photos</p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -3,12 +3,13 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IAlbumShare extends Document {
   albumId: mongoose.Types.ObjectId;
   photographerId: mongoose.Types.ObjectId;
-  sharedWith: {
+  sharedWith?: {
     userId?: mongoose.Types.ObjectId;
-    email: string;
+    email?: string;
     name?: string;
   };
   shareType: 'link' | 'email' | 'direct'; // link = public/anyone with link, email = invited, direct = specific user
+  linkType?: 'public' | 'private'; // For link shares: public = anonymous, private = password-protected with selection
   accessToken?: string; // For link-based sharing
   expiresAt?: Date;
   permissions: {
@@ -16,6 +17,7 @@ export interface IAlbumShare extends Document {
     canDownload: boolean;
     canFavorite: boolean;
     canComment: boolean;
+    canSelect: boolean; // Can select photos for final album
   };
   password?: string; // Optional password protection (hashed)
   views: number;
@@ -46,7 +48,6 @@ const AlbumShareSchema: Schema = new Schema(
       },
       email: {
         type: String,
-        required: true,
         lowercase: true,
         trim: true,
       },
@@ -60,6 +61,10 @@ const AlbumShareSchema: Schema = new Schema(
       enum: ['link', 'email', 'direct'],
       required: true,
       default: 'email',
+    },
+    linkType: {
+      type: String,
+      enum: ['public', 'private'],
     },
     accessToken: {
       type: String,
@@ -84,6 +89,10 @@ const AlbumShareSchema: Schema = new Schema(
         default: true,
       },
       canComment: {
+        type: Boolean,
+        default: false,
+      },
+      canSelect: {
         type: Boolean,
         default: false,
       },
@@ -114,6 +123,6 @@ AlbumShareSchema.index({ 'sharedWith.userId': 1 });
 AlbumShareSchema.index({ accessToken: 1 });
 AlbumShareSchema.index({ expiresAt: 1 });
 
-const   AlbumShare: Model<IAlbumShare> = mongoose.models.AlbumShare || mongoose.model<IAlbumShare>('AlbumShare', AlbumShareSchema);
+const AlbumShare: Model<IAlbumShare> = mongoose.models.AlbumShare || mongoose.model<IAlbumShare>('AlbumShare', AlbumShareSchema);
 
 export default AlbumShare;

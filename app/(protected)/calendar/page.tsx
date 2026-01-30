@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AppLayout } from '@/components/layout/app-layout';
 import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -196,16 +195,14 @@ export default function CalendarPage() {
 
     if (loading) {
         return (
-            <AppLayout>
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-            </AppLayout>
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
         );
     }
 
     return (
-        <AppLayout>
+        <>
             <div className="space-y-6">
                 <div>
                     <h1 className="text-3xl font-bold">Calendar</h1>
@@ -277,7 +274,7 @@ export default function CalendarPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </AppLayout>
+        </>
 
     );
 }

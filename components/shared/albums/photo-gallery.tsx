@@ -72,20 +72,6 @@ export function PhotoGallery({
         document.body.style.overflow = 'unset';
     };
 
-    if (photos.length === 0) {
-        return (
-            <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                    <ImageIcon className="h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No photos yet</h3>
-                    <p className="text-sm text-muted-foreground text-center max-w-md">
-                        Upload your first photos to get started. Drag and drop or click "Add Photos"
-                    </p>
-                </CardContent>
-            </Card>
-        );
-    }
-
     useEffect(() => {
         // Ensure the DOM element exists
         const container = document.querySelector('.masonry-gallery-demo');
@@ -105,6 +91,20 @@ export function PhotoGallery({
             });
         }
     }, []);
+
+    if (photos.length === 0) {
+        return (
+            <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                    <ImageIcon className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No photos yet</h3>
+                    <p className="text-sm text-muted-foreground text-center max-w-md">
+                        Upload your first photos to get started. Drag and drop or click "Add Photos"
+                    </p>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <>

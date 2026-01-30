@@ -18,23 +18,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
   Link2,
-  Mail,
   Copy,
   Check,
   Trash2,
-  Edit,
   Eye,
   Download,
   Heart,
-  MessageSquare,
   Calendar,
   Lock,
-  X,
   Loader2,
-  AlertCircle,
+  Globe,
+  CheckSquare,
+  Pencil,
+  QrCode,
 } from 'lucide-react';
-import { shareApi, type AlbumShare, type SharePermissions } from '@/lib/api/albums';
+import { shareApi, type AlbumShare } from '@/lib/api/albums';
 import { useToast } from '@/hooks/use-toast';
+import QRCodeLib from 'qrcode';
 import { format } from 'date-fns';
 
 interface ShareDialogProps {
@@ -46,34 +46,29 @@ interface ShareDialogProps {
 
 export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDialogProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('link');
+  const [activeTab, setActiveTab] = useState('public');
   const [loading, setLoading] = useState(false);
-  const [shares, setShares] = useState<AlbumShare[]>([]);
-  const [publicShare, setPublicShare] = useState<AlbumShare | null>(null);
-  const [privateShares, setPrivateShares] = useState<AlbumShare[]>([]);
-  const [copied, setCopied] = useState(false);
+  const [publicLink, setPublicLink] = useState<AlbumShare | null>(null);
+  const [privateLink, setPrivateLink] = useState<AlbumShare | null>(null);
+  const [copiedPublic, setCopiedPublic] = useState(false);
+  const [copiedPrivate, setCopiedPrivate] = useState(false);
+  const [isEditingPublic, setIsEditingPublic] = useState(false);
+
+  // QR Code state
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
   // Public link settings
-  const [publicPassword, setPublicPassword] = useState('');
   const [publicExpiry, setPublicExpiry] = useState('');
-  const [publicPermissions, setPublicPermissions] = useState<SharePermissions>({
+  const [publicPermissions, setPublicPermissions] = useState({
     canView: true,
     canDownload: true,
     canFavorite: true,
-    canComment: false,
   });
 
-  // Email sharing settings
-  const [emailList, setEmailList] = useState<Array<{ email: string; name: string }>>([
-    { email: '', name: '' },
-  ]);
-  const [emailPermissions, setEmailPermissions] = useState<SharePermissions>({
-    canView: true,
-    canDownload: true,
-    canFavorite: true,
-    canComment: false,
-  });
-  const [emailExpiry, setEmailExpiry] = useState('');
+  // Private link settings
+  const [privatePassword, setPrivatePassword] = useState('');
+  const [privateExpiry, setPrivateExpiry] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -81,18 +76,64 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
     }
   }, [open, albumId]);
 
+  useEffect(() => {
+    if (publicLink?.shareUrl && showQRCode) {
+      generateQRCode(publicLink.shareUrl);
+    }
+  }, [publicLink?.shareUrl, showQRCode]);
+
+  const generateQRCode = async (url: string) => {
+    try {
+      const dataUrl = await QRCodeLib.toDataURL(url, {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+      setQrCodeDataUrl(dataUrl);
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate QR code',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const downloadQRCode = () => {
+    if (!qrCodeDataUrl) return;
+
+    const link = document.createElement('a');
+    link.href = qrCodeDataUrl;
+    link.download = `${albumTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_qr_code.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: 'Downloaded',
+      description: 'QR code downloaded successfully',
+    });
+  };
+
   const fetchShares = async () => {
     try {
       setLoading(true);
       const response = await shareApi.getShares(albumId);
-      setShares(response.shares);
-      setPublicShare(response.publicShare || null);
-      setPrivateShares(response.privateShares);
+      setPublicLink(response.publicLink);
+      setPrivateLink(response.privateLink);
 
       // Pre-fill public share settings if exists
-      if (response.publicShare) {
-        setPublicPermissions(response.publicShare.permissions);
-        setPublicExpiry(response.publicShare.expiresAt || '');
+      if (response.publicLink) {
+        setPublicPermissions({
+          canView: response.publicLink.permissions.canView,
+          canDownload: response.publicLink.permissions.canDownload,
+          canFavorite: response.publicLink.permissions.canFavorite,
+        });
+        setPublicExpiry(response.publicLink.expiresAt || '');
       }
     } catch (error: any) {
       console.error('Failed to fetch shares:', error);
@@ -106,25 +147,23 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
     }
   };
 
-  const createPublicShare = async () => {
+  const createPublicLink = async () => {
     try {
       setLoading(true);
       const response = await shareApi.createShare(albumId, {
-        shareType: 'link',
-        permissions: publicPermissions,
-        password: publicPassword || undefined,
+        linkType: 'public',
         expiresAt: publicExpiry || undefined,
       });
 
-      setPublicShare(response.shares[0]);
+      setPublicLink(response.shares[0]);
       toast({
         title: 'Success',
-        description: 'Public share link created successfully',
+        description: 'Public link created successfully',
       });
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create share link',
+        description: error.message || 'Failed to create public link',
         variant: 'destructive',
       });
     } finally {
@@ -132,17 +171,11 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
     }
   };
 
-  const createEmailShares = async () => {
-    // Validate emails
-    const validEmails = emailList.filter(item => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return item.email && emailRegex.test(item.email);
-    });
-
-    if (validEmails.length === 0) {
+  const createPrivateLink = async () => {
+    if (!privatePassword) {
       toast({
-        title: 'Validation Error',
-        description: 'Please enter at least one valid email address',
+        title: 'Password Required',
+        description: 'Please enter a password for the private link',
         variant: 'destructive',
       });
       return;
@@ -151,23 +184,21 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
     try {
       setLoading(true);
       const response = await shareApi.createShare(albumId, {
-        shareType: 'email',
-        emails: validEmails,
-        permissions: emailPermissions,
-        expiresAt: emailExpiry || undefined,
+        linkType: 'private',
+        password: privatePassword,
+        expiresAt: privateExpiry || undefined,
       });
 
-      setPrivateShares([...privateShares, ...response.shares]);
-      setEmailList([{ email: '', name: '' }]); // Reset form
-      
+      setPrivateLink(response.shares[0]);
+      setPrivatePassword('');
       toast({
         title: 'Success',
-        description: `Album shared with ${response.shares.length} user(s)`,
+        description: 'Private link created successfully',
       });
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to share album',
+        description: error.message || 'Failed to create private link',
         variant: 'destructive',
       });
     } finally {
@@ -175,29 +206,34 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, isPublic: boolean) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (isPublic) {
+      setCopiedPublic(true);
+      setTimeout(() => setCopiedPublic(false), 2000);
+    } else {
+      setCopiedPrivate(true);
+      setTimeout(() => setCopiedPrivate(false), 2000);
+    }
     toast({
       title: 'Copied',
       description: 'Share link copied to clipboard',
     });
   };
 
-  const revokeShare = async (shareId: string) => {
+  const revokeShare = async (shareId: string, isPublic: boolean) => {
     try {
       await shareApi.revokeShare(albumId, shareId);
-      
-      // Update state
-      if (publicShare?._id === shareId) {
-        setPublicShare(null);
+
+      if (isPublic) {
+        setPublicLink(null);
+      } else {
+        setPrivateLink(null);
       }
-      setPrivateShares(privateShares.filter(s => s._id !== shareId));
-      
+
       toast({
         title: 'Success',
-        description: 'Share revoked successfully',
+        description: 'Share link revoked successfully',
       });
     } catch (error: any) {
       toast({
@@ -208,18 +244,40 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
     }
   };
 
-  const addEmailField = () => {
-    setEmailList([...emailList, { email: '', name: '' }]);
-  };
+  const updatePublicShare = async () => {
+    if (!publicLink) return;
 
-  const removeEmailField = (index: number) => {
-    setEmailList(emailList.filter((_, i) => i !== index));
-  };
+    try {
+      setLoading(true);
+      const response = await shareApi.updateShare(albumId, {
+        shareId: publicLink._id,
+        permissions: {
+          ...publicPermissions,
+          canSelect: false, // Ensure canSelect is false for public links
+          canComment: false, // Public links generally don't comment, but can be adjustable if needed. Keeping it simple.
+        },
+      });
 
-  const updateEmailField = (index: number, field: 'email' | 'name', value: string) => {
-    const updated = [...emailList];
-    updated[index][field] = value;
-    setEmailList(updated);
+      // The response contains the updated share. Update state.
+      setPublicLink({
+        ...publicLink,
+        permissions: response.share.permissions
+      });
+
+      setIsEditingPublic(false);
+      toast({
+        title: 'Success',
+        description: 'Link permissions updated successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update permissions',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -228,25 +286,322 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
         <DialogHeader>
           <DialogTitle>Share Album</DialogTitle>
           <DialogDescription>
-            Share "{albumTitle}" with others via public link or private email invitations
+            Share "{albumTitle}" with others via public link or private protected link
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="link" className="flex items-center gap-2">
-              <Link2 className="h-4 w-4" />
+            <TabsTrigger value="public" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
               Public Link
             </TabsTrigger>
-            <TabsTrigger value="email" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Private Share
+            <TabsTrigger value="private" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Private Link
             </TabsTrigger>
           </TabsList>
 
           {/* PUBLIC LINK TAB */}
-          <TabsContent value="link" className="space-y-4 mt-4">
-            {publicShare ? (
+          <TabsContent value="public" className="space-y-4 mt-4">
+            {publicLink ? (
+              <Card>
+                <CardContent className="pt-6 space-y-4">
+                  {!isEditingPublic ? (
+                    <>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">Share Link</Label>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Input
+                              value={publicLink.shareUrl || ''}
+                              readOnly
+                              className="font-mono text-sm"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyToClipboard(publicLink.shareUrl || '', true)}
+                            >
+                              {copiedPublic ? (
+                                <Check className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Eye className="h-4 w-4" />
+                          {publicLink.views} views
+                        </div>
+                        {publicLink.expiresAt && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            Expires {format(new Date(publicLink.expiresAt), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {publicLink.permissions.canView && (
+                          <Badge variant="secondary">
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Badge>
+                        )}
+                        {publicLink.permissions.canDownload && (
+                          <Badge variant="secondary">
+                            <Download className="h-3 w-3 mr-1" />
+                            Download
+                          </Badge>
+                        )}
+                        {publicLink.permissions.canFavorite && (
+                          <Badge variant="secondary">
+                            <Heart className="h-3 w-3 mr-1" />
+                            Favorite
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-muted-foreground">
+                          <CheckSquare className="h-3 w-3 mr-1" />
+                          No Selection
+                        </Badge>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm" // Matches revoke button size
+                          onClick={() => {
+                            setIsEditingPublic(true);
+                            setPublicPermissions({
+                              canView: publicLink.permissions.canView,
+                              canDownload: publicLink.permissions.canDownload,
+                              canFavorite: publicLink.permissions.canFavorite,
+                            });
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit Permissions
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => revokeShare(publicLink._id, true)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Revoke Link
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      {/* QR Code Section */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">QR Code</Label>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowQRCode(!showQRCode)}
+                          >
+                            <QrCode className="h-4 w-4 mr-2" />
+                            {showQRCode ? 'Hide QR Code' : 'Show QR Code'}
+                          </Button>
+                        </div>
+
+                        {showQRCode && (
+                          <div className="flex flex-col items-center gap-3 p-4 bg-muted rounded-lg">
+                            {qrCodeDataUrl ? (
+                              <>
+                                <div className="bg-white p-3 rounded-lg">
+                                  <img
+                                    src={qrCodeDataUrl}
+                                    alt="QR Code"
+                                    className="w-40 h-40"
+                                  />
+                                </div>
+                                <p className="text-xs text-center text-muted-foreground max-w-xs">
+                                  Scan this QR code to access the album directly
+                                </p>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={downloadQRCode}
+                                  className="w-full max-w-xs"
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download QR Code
+                                </Button>
+                              </>
+                            ) : (
+                              <div className="flex items-center justify-center py-8">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">Edit Public Link Permissions</h3>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">Allow viewing photos</span>
+                            </div>
+                            <Switch
+                              checked={publicPermissions.canView}
+                              onCheckedChange={(checked) =>
+                                setPublicPermissions({ ...publicPermissions, canView: checked })
+                              }
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Download className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">Allow downloading photos</span>
+                            </div>
+                            <Switch
+                              checked={publicPermissions.canDownload}
+                              onCheckedChange={(checked) =>
+                                setPublicPermissions({ ...publicPermissions, canDownload: checked })
+                              }
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Heart className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">Allow favoriting photos</span>
+                            </div>
+                            <Switch
+                              checked={publicPermissions.canFavorite}
+                              onCheckedChange={(checked) =>
+                                setPublicPermissions({ ...publicPermissions, canFavorite: checked })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditingPublic(false)}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={updatePublicShare}
+                          disabled={loading}
+                        >
+                          {loading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            'Save Changes'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Create a public link that anyone can use to view the album. No password required.
+                  Photo selection is disabled for public links.
+                </p>
+
+                <div className="space-y-2">
+                  <Label>Permissions</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Allow viewing photos</span>
+                      </div>
+                      <Switch
+                        checked={publicPermissions.canView}
+                        onCheckedChange={(checked) =>
+                          setPublicPermissions({ ...publicPermissions, canView: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Download className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Allow downloading photos</span>
+                      </div>
+                      <Switch
+                        checked={publicPermissions.canDownload}
+                        onCheckedChange={(checked) =>
+                          setPublicPermissions({ ...publicPermissions, canDownload: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Allow favoriting photos</span>
+                      </div>
+                      <Switch
+                        checked={publicPermissions.canFavorite}
+                        onCheckedChange={(checked) =>
+                          setPublicPermissions({ ...publicPermissions, canFavorite: checked })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label htmlFor="public-expiry">Expiration Date (Optional)</Label>
+                  <Input
+                    id="public-expiry"
+                    type="datetime-local"
+                    value={publicExpiry}
+                    onChange={(e) => setPublicExpiry(e.target.value)}
+                  />
+                </div>
+
+                <Button onClick={createPublicLink} disabled={loading} className="w-full">
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="mr-2 h-4 w-4" />
+                      Create Public Link
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* PRIVATE LINK TAB */}
+          <TabsContent value="private" className="space-y-4 mt-4">
+            {privateLink ? (
               <Card>
                 <CardContent className="pt-6 space-y-4">
                   <div className="flex items-start justify-between">
@@ -254,16 +609,16 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
                       <Label className="text-sm font-medium">Share Link</Label>
                       <div className="flex items-center gap-2 mt-2">
                         <Input
-                          value={publicShare.shareUrl || ''}
+                          value={privateLink.shareUrl || ''}
                           readOnly
                           className="font-mono text-sm"
                         />
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => copyToClipboard(publicShare.shareUrl || '')}
+                          onClick={() => copyToClipboard(privateLink.shareUrl || '', false)}
                         >
-                          {copied ? (
+                          {copiedPrivate ? (
                             <Check className="h-4 w-4 text-green-500" />
                           ) : (
                             <Copy className="h-4 w-4" />
@@ -276,45 +631,43 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Eye className="h-4 w-4" />
-                      {publicShare.views} views
+                      {privateLink.views} views
                     </div>
-                    {publicShare.expiresAt && (
+                    {privateLink.expiresAt && (
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        Expires {format(new Date(publicShare.expiresAt), 'MMM d, yyyy')}
+                        Expires {format(new Date(privateLink.expiresAt), 'MMM d, yyyy')}
                       </div>
                     )}
-                    {publicShare.password && (
-                      <div className="flex items-center gap-1">
-                        <Lock className="h-4 w-4" />
-                        Password protected
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <Lock className="h-4 w-4" />
+                      Password protected
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {publicShare.permissions.canView && (
+                    {privateLink.permissions.canView && (
                       <Badge variant="secondary">
                         <Eye className="h-3 w-3 mr-1" />
                         View
                       </Badge>
                     )}
-                    {publicShare.permissions.canDownload && (
+                    {privateLink.permissions.canDownload && (
                       <Badge variant="secondary">
                         <Download className="h-3 w-3 mr-1" />
                         Download
                       </Badge>
                     )}
-                    {publicShare.permissions.canFavorite && (
+                    {privateLink.permissions.canFavorite && (
                       <Badge variant="secondary">
                         <Heart className="h-3 w-3 mr-1" />
                         Favorite
                       </Badge>
                     )}
-                    {publicShare.permissions.canComment && (
-                      <Badge variant="secondary">
-                        <MessageSquare className="h-3 w-3 mr-1" />
-                        Comment
+                    {privateLink.permissions.canSelect && (
+                      <Badge variant="default">
+                        <CheckSquare className="h-3 w-3 mr-1" />
+                        Photo Selection
                       </Badge>
                     )}
                   </div>
@@ -322,7 +675,7 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => revokeShare(publicShare._id)}
+                    onClick={() => revokeShare(privateLink._id, false)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Revoke Link
@@ -331,86 +684,55 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
               </Card>
             ) : (
               <div className="space-y-4">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Permissions</Label>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Allow viewing photos</span>
-                        </div>
-                        <Switch
-                          checked={publicPermissions.canView}
-                          onCheckedChange={(checked) =>
-                            setPublicPermissions({ ...publicPermissions, canView: checked })
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Download className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Allow downloading photos</span>
-                        </div>
-                        <Switch
-                          checked={publicPermissions.canDownload}
-                          onCheckedChange={(checked) =>
-                            setPublicPermissions({ ...publicPermissions, canDownload: checked })
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Heart className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Allow favoriting photos</span>
-                        </div>
-                        <Switch
-                          checked={publicPermissions.canFavorite}
-                          onCheckedChange={(checked) =>
-                            setPublicPermissions({ ...publicPermissions, canFavorite: checked })
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Allow commenting</span>
-                        </div>
-                        <Switch
-                          checked={publicPermissions.canComment}
-                          onCheckedChange={(checked) =>
-                            setPublicPermissions({ ...publicPermissions, canComment: checked })
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
+                <p className="text-sm text-muted-foreground">
+                  Create a password-protected private link. Users can view, download, favorite,
+                  and select their favorite photos for the final album.
+                </p>
 
-                  <Separator />
+                <div className="space-y-2">
+                  <Label htmlFor="private-password">Password (Required)</Label>
+                  <Input
+                    id="private-password"
+                    type="password"
+                    placeholder="Enter a password"
+                    value={privatePassword}
+                    onChange={(e) => setPrivatePassword(e.target.value)}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="public-password">Password Protection (Optional)</Label>
-                    <Input
-                      id="public-password"
-                      type="password"
-                      placeholder="Leave empty for no password"
-                      value={publicPassword}
-                      onChange={(e) => setPublicPassword(e.target.value)}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="private-expiry">Expiration Date (Optional)</Label>
+                  <Input
+                    id="private-expiry"
+                    type="datetime-local"
+                    value={privateExpiry}
+                    onChange={(e) => setPrivateExpiry(e.target.value)}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="public-expiry">Expiration Date (Optional)</Label>
-                    <Input
-                      id="public-expiry"
-                      type="datetime-local"
-                      value={publicExpiry}
-                      onChange={(e) => setPublicExpiry(e.target.value)}
-                    />
+                <div className="p-3 rounded-md bg-muted/50">
+                  <p className="text-sm font-medium mb-2">Included Permissions:</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Badge>
+                    <Badge variant="secondary">
+                      <Download className="h-3 w-3 mr-1" />
+                      Download
+                    </Badge>
+                    <Badge variant="secondary">
+                      <Heart className="h-3 w-3 mr-1" />
+                      Favorite
+                    </Badge>
+                    <Badge variant="default">
+                      <CheckSquare className="h-3 w-3 mr-1" />
+                      Photo Selection
+                    </Badge>
                   </div>
                 </div>
 
-                <Button onClick={createPublicShare} disabled={loading} className="w-full">
+                <Button onClick={createPrivateLink} disabled={loading || !privatePassword} className="w-full">
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -418,160 +740,13 @@ export function ShareDialog({ open, onOpenChange, albumId, albumTitle }: ShareDi
                     </>
                   ) : (
                     <>
-                      <Link2 className="mr-2 h-4 w-4" />
-                      Create Public Link
+                      <Lock className="mr-2 h-4 w-4" />
+                      Create Private Link
                     </>
                   )}
                 </Button>
               </div>
             )}
-          </TabsContent>
-
-          {/* EMAIL SHARE TAB */}
-          <TabsContent value="email" className="space-y-4 mt-4">
-            {/* Existing Private Shares */}
-            {privateShares.length > 0 && (
-              <div className="space-y-2">
-                <Label>Shared With</Label>
-                <div className="space-y-2">
-                  {privateShares.map((share) => (
-                    <Card key={share._id}>
-                      <CardContent className="pt-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="font-medium">{share.sharedWith.name || 'Unknown'}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {share.sharedWith.email}
-                            </div>
-                            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                              <Eye className="h-3 w-3" />
-                              {share.views} views
-                              {share.expiresAt && (
-                                <>
-                                  <span>•</span>
-                                  <Calendar className="h-3 w-3" />
-                                  Expires {format(new Date(share.expiresAt), 'MMM d, yyyy')}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => revokeShare(share._id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                <Separator className="my-4" />
-              </div>
-            )}
-
-            {/* New Email Share Form */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Invite People</Label>
-                <div className="space-y-2">
-                  {emailList.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        placeholder="Email address"
-                        type="email"
-                        value={item.email}
-                        onChange={(e) => updateEmailField(index, 'email', e.target.value)}
-                      />
-                      <Input
-                        placeholder="Name (optional)"
-                        value={item.name}
-                        onChange={(e) => updateEmailField(index, 'name', e.target.value)}
-                      />
-                      {emailList.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeEmailField(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" size="sm" onClick={addEmailField}>
-                  + Add Another
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Permissions</Label>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Allow viewing photos</span>
-                    </div>
-                    <Switch
-                      checked={emailPermissions.canView}
-                      onCheckedChange={(checked) =>
-                        setEmailPermissions({ ...emailPermissions, canView: checked })
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Download className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Allow downloading photos</span>
-                    </div>
-                    <Switch
-                      checked={emailPermissions.canDownload}
-                      onCheckedChange={(checked) =>
-                        setEmailPermissions({ ...emailPermissions, canDownload: checked })
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Heart className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Allow favoriting photos</span>
-                    </div>
-                    <Switch
-                      checked={emailPermissions.canFavorite}
-                      onCheckedChange={(checked) =>
-                        setEmailPermissions({ ...emailPermissions, canFavorite: checked })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email-expiry">Expiration Date (Optional)</Label>
-                <Input
-                  id="email-expiry"
-                  type="datetime-local"
-                  value={emailExpiry}
-                  onChange={(e) => setEmailExpiry(e.target.value)}
-                />
-              </div>
-
-              <Button onClick={createEmailShares} disabled={loading} className="w-full">
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sharing...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="mr-2 h-4 w-4" />
-                    Share Album
-                  </>
-                )}
-              </Button>
-            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

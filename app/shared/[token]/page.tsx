@@ -37,6 +37,7 @@ export default function SharedAlbumPage() {
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [permissions, setPermissions] = useState<SharePermissions | null>(null);
     const [shareType, setShareType] = useState<string>('');
+    const [linkType, setLinkType] = useState<string | null>(null);
     const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
 
@@ -84,11 +85,11 @@ export default function SharedAlbumPage() {
             //     return;
             // }
 
-            // Successfully loaded album
             setAlbum(response.album);
             setPhotos(response.photos);
             setPermissions(response.permissions);
             setShareType(response.shareType);
+            setLinkType(response.linkType || null);
             setExpiresAt(response.expiresAt || null);
             setVerified(true);
             setRequiresPassword(false);
@@ -302,7 +303,7 @@ export default function SharedAlbumPage() {
 
         try {
             const link = document.createElement('a');
-            link.href = photo.url || '';
+            link.href = photo.downloadUrl || photo.url || '';
             link.download = photo.originalName;
             document.body.appendChild(link);
             link.click();
@@ -425,9 +426,9 @@ export default function SharedAlbumPage() {
                                 </p>
                             )}
                         </div>
-                        {(shareType === 'link' || shareType === 'email') && (
+                        {linkType && (
                             <Badge variant="secondary" className="ml-4 shrink-0">
-                                {shareType === 'link' ? 'Public Link' : 'Private Share'}
+                                {linkType === 'public' ? 'Public Link' : 'Private Share'}
                             </Badge>
                         )}
                     </div>
@@ -510,8 +511,8 @@ export default function SharedAlbumPage() {
                     <PhotoGallery
                         photos={photos}
                         selectedPhotos={new Set()}
-                        onPhotoSelect={(photoId) => handleSelectionToggle(photoId, !photos.find(p => p._id === photoId)?.isClientSelected)}
-                        hasSelection={true}
+                        onPhotoSelect={permissions?.canSelect ? (photoId) => handleSelectionToggle(photoId, !photos.find(p => p._id === photoId)?.isClientSelected) : () => { }}
+                        hasSelection={permissions?.canSelect ?? false}
                         canDownload={permissions?.canDownload}
                         onDownload={handleDownload}
                         useInternalPreview={true}
@@ -522,7 +523,7 @@ export default function SharedAlbumPage() {
                         photoComments={photoComments}
                         onFavoriteToggle={handleFavoriteToggle}
                         onAddComment={handleAddComment}
-                        onSelectionToggle={handleSelectionToggle}
+                        onSelectionToggle={permissions?.canSelect ? handleSelectionToggle : undefined}
                     />
                 </div>
 

@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// POST /api/albums/[id]/share - Share album with users or generate public link
+// POST /api/albums/[id]/share - Share album with users or generate public/private link
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -38,62 +38,110 @@ export async function POST(
     }
 
     const {
-      shareType, // 'link' (public) or 'email' (private - selected users)
-      emails, // Array of {email, name} for private sharing
-      permissions,
+      linkType, // 'public' or 'private'
+      password, // Required for private links
       expiresAt,
-      password, // Optional password for link-based sharing
-      message, // Optional message to include in email
     } = body;
 
-    // Validate shareType
-    if (!['link', 'email'].includes(shareType)) {
-      return NextResponse.json({ error: 'Invalid share type. Must be "link" or "email"' }, { status: 400 });
+    // Validate linkType
+    if (!['public', 'private'].includes(linkType)) {
+      return NextResponse.json({ error: 'Invalid link type. Must be "public" or "private"' }, { status: 400 });
+    }
+
+    // Validate password for private links
+    if (linkType === 'private' && !password) {
+      return NextResponse.json({ error: 'Password is required for private links' }, { status: 400 });
     }
 
     const shares = [];
 
-    if (shareType === 'link') {
-      // PUBLIC SHARING: Generate public link accessible by anyone with the token
+    if (linkType === 'public') {
+      // PUBLIC LINK: Anonymous access, view/download/like only (no selection)
 
       // Check if a public link already exists for this album
       const existingPublicShare = await AlbumShare.findOne({
         albumId: id,
         shareType: 'link',
-        'sharedWith.email': 'public',
+        linkType: 'public',
         isActive: true,
       });
 
       let share;
       if (existingPublicShare) {
-        // Update existing public share
-        const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
-
-        existingPublicShare.permissions = permissions || existingPublicShare.permissions;
-        existingPublicShare.expiresAt = expiresAt ? new Date(expiresAt) : existingPublicShare.expiresAt;
-        existingPublicShare.password = hashedPassword || existingPublicShare.password;
-
-        share = await existingPublicShare.save();
+        // Return existing public share
+        share = existingPublicShare;
       } else {
         // Create new public share
         const accessToken = crypto.randomBytes(32).toString('hex');
-        const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
 
         share = await AlbumShare.create({
           albumId: id,
           photographerId: decoded.userId,
           sharedWith: {
-            email: 'public',
-            name: 'Public Link',
+            email: '',
+            name: linkType === 'public' ? 'Public Link' : 'Private Link',
           },
           shareType: 'link',
+          linkType: 'public',
           accessToken,
           expiresAt: expiresAt ? new Date(expiresAt) : undefined,
-          permissions: permissions || {
+          permissions: {
             canView: true,
             canDownload: true,
             canFavorite: true,
             canComment: false,
+            canSelect: false, // Public links cannot select photos
+          },
+          isActive: true,
+        });
+      }
+
+      const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/shared/${share.accessToken}`;
+
+      shares.push({
+        ...share.toObject(),
+        shareUrl,
+      });
+    } else if (linkType === 'private') {
+      // PRIVATE LINK: Password-protected with photo selection capability
+
+      // Check if a private link already exists for this album
+      const existingPrivateShare = await AlbumShare.findOne({
+        albumId: id,
+        shareType: 'link',
+        linkType: 'private',
+        isActive: true,
+      });
+
+      let share;
+      if (existingPrivateShare) {
+        // Update existing private share password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        existingPrivateShare.password = hashedPassword;
+        existingPrivateShare.expiresAt = expiresAt ? new Date(expiresAt) : existingPrivateShare.expiresAt;
+        share = await existingPrivateShare.save();
+      } else {
+        // Create new private share
+        const accessToken = crypto.randomBytes(32).toString('hex');
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        share = await AlbumShare.create({
+          albumId: id,
+          photographerId: decoded.userId,
+          sharedWith: {
+            email: '',
+            name: 'Private Link',
+          },
+          shareType: 'link',
+          linkType: 'private',
+          accessToken,
+          expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+          permissions: {
+            canView: true,
+            canDownload: true,
+            canFavorite: true,
+            canComment: true,
+            canSelect: true, // Private links can select photos
           },
           password: hashedPassword,
           isActive: true,
@@ -106,86 +154,14 @@ export async function POST(
         ...share.toObject(),
         shareUrl,
       });
-    } else if (shareType === 'email') {
-      // PRIVATE SHARING: Share with specific users via email
-
-      if (!emails || !Array.isArray(emails) || emails.length === 0) {
-        return NextResponse.json({ error: 'Emails are required for private sharing' }, { status: 400 });
-      }
-
-      // Validate emails
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      for (const emailData of emails) {
-        if (!emailData.email || !emailRegex.test(emailData.email)) {
-          return NextResponse.json({ error: `Invalid email: ${emailData.email}` }, { status: 400 });
-        }
-      }
-
-      // Create shares for each email
-      for (const emailData of emails) {
-        // Check if already shared with this email
-        const existingShare = await AlbumShare.findOne({
-          albumId: id,
-          shareType: 'email',
-          'sharedWith.email': emailData.email.toLowerCase(),
-          isActive: true,
-        });
-
-        let share;
-        if (existingShare) {
-          // Update existing share
-          existingShare.permissions = permissions || existingShare.permissions;
-          existingShare.expiresAt = expiresAt ? new Date(expiresAt) : existingShare.expiresAt;
-          existingShare.sharedWith.name = emailData.name || existingShare.sharedWith.name;
-
-          share = await existingShare.save();
-        } else {
-          // Create new share
-          const accessToken = crypto.randomBytes(32).toString('hex');
-
-          share = await AlbumShare.create({
-            albumId: id,
-            photographerId: decoded.userId,
-            sharedWith: {
-              email: emailData.email.toLowerCase(),
-              name: emailData.name || '',
-            },
-            shareType: 'email',
-            accessToken,
-            expiresAt: expiresAt ? new Date(expiresAt) : undefined,
-            permissions: permissions || {
-              canView: true,
-              canDownload: true,
-              canFavorite: true,
-              canComment: false,
-            },
-            isActive: true,
-          });
-        }
-
-        const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/shared/${share.accessToken}`;
-
-        shares.push({
-          ...share.toObject(),
-          shareUrl,
-        });
-
-        // TODO: Send email notification with access link
-        // sendShareNotification(emailData.email, {
-        //   albumTitle: album.title,
-        //   shareUrl,
-        //   message,
-        //   photographerName: album.photographerName,
-        // });
-      }
     }
 
     return NextResponse.json({
-      message: shareType === 'link'
+      message: linkType === 'public'
         ? 'Public share link generated successfully'
-        : `Album shared with ${shares.length} user(s) successfully`,
+        : 'Private share link generated successfully',
       shares,
-      shareType,
+      linkType,
     }, { status: 201 });
   } catch (error: any) {
     console.error('Share Album Error:', error);
@@ -222,9 +198,10 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get all active shares for this album
+    // Get all active link shares for this album
     const shares = await AlbumShare.find({
       albumId: id,
+      shareType: 'link',
       isActive: true,
     }).sort({ createdAt: -1 });
 
@@ -238,14 +215,13 @@ export async function GET(
       };
     });
 
-    // Separate public and private shares
-    const publicShare = sharesWithUrls.find(s => s.shareType === 'link');
-    const privateShares = sharesWithUrls.filter(s => s.shareType === 'email');
+    // Separate public and private links
+    const publicLink = sharesWithUrls.find(s => s.linkType === 'public') || null;
+    const privateLink = sharesWithUrls.find(s => s.linkType === 'private') || null;
 
     return NextResponse.json({
-      shares: sharesWithUrls,
-      publicShare,
-      privateShares,
+      publicLink,
+      privateLink,
       totalShares: sharesWithUrls.length,
     });
   } catch (error: any) {
@@ -369,9 +345,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Share not found' }, { status: 404 });
     }
 
-    // Update fields
     if (permissions) {
       share.permissions = { ...share.permissions, ...permissions };
+
+      // Enforce security: Public links cannot have photo selection
+      if (share.linkType === 'public') {
+        share.permissions.canSelect = false;
+      }
     }
 
     if (expiresAt !== undefined) {

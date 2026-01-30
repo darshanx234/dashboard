@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AppLayout } from '@/components/layout/app-layout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -24,15 +23,14 @@ import {
 
 // Extracted Components
 import { UploadDropZone } from '@/components/shared/albums/upload-drop-zone';
-import { UploadProgressPanel, type UploadingFile } from '@/components/shared/albums/upload-progress-panel';
 import { PhotoGallery } from '@/components/shared/albums/photo-gallery';
-import { ImagePreviewModal } from '@/components/shared/albums/image-preview-modal';
 import { AlbumHeader } from '@/components/shared/albums/album-header';
 import { SelectionHeader } from '@/components/shared/albums/selection-header';
 import { StorageIndicator, type StorageInfo } from '@/components/shared/albums/storage-indicator';
 
-// Upload Service
-import { UploadService, type UploadTask } from '@/lib/services/upload-service';
+// Global Upload Manager
+import { getUploadManager } from '@/lib/services/global-upload-manager';
+import { useUploadStore } from '@/lib/store/upload';
 
 // Infinite Scroll Hook
 import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
@@ -42,18 +40,14 @@ export default function AlbumDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadServiceRef = useRef<UploadService | null>(null);
 
   // State
   const [album, setAlbum] = useState<Album | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadPanelExpanded, setUploadPanelExpanded] = useState(true);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -70,83 +64,38 @@ export default function AlbumDetailPage() {
 
   const albumId = params.id as string;
 
-  // Initialize upload serv ice
+  // Subscribe to global upload store for this album's successful uploads
   useEffect(() => {
-    uploadServiceRef.current = new UploadService({
-      onProgress: (taskId, progress) => {
-        setUploadingFiles((prev) =>
-          prev.map((file) =>
-            file.id === taskId ? { ...file, progress } : file
-          )
-        );
-      },
-      onSuccess: (taskId, photo) => {
-        setUploadingFiles((prev) =>
-          prev.map((file) =>
-            file.id === taskId
-              ? { ...file, status: 'success', progress: 100, photo }
-              : file
-          )
-        );
+    const unsubscribe = useUploadStore.subscribe((state, prevState) => {
+      // Check for newly successful uploads in this album
+      const albumTasks = state.tasks.filter(t => t.albumId === albumId);
+      const prevAlbumTasks = prevState.tasks.filter(t => t.albumId === albumId);
 
-        // Add photo to gallery at the beginning (new uploads appear first)
-        setPhotos((prev) => [photo, ...prev]);
+      albumTasks.forEach(task => {
+        const prevTask = prevAlbumTasks.find(t => t.id === task.id);
+        // If task just became successful, add photo to gallery
+        if (task.status === 'success' && task.photo && prevTask?.status !== 'success') {
+          setPhotos(prev => {
+            // Avoid duplicates
+            if (prev.some(p => p._id === task.photo!._id)) return prev;
+            return [task.photo!, ...prev];
+          });
 
-        // Update album count and storage used
-        setAlbum((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            totalPhotos: prev.totalPhotos + 1,
-            storageUsed: (prev.storageUsed || 0) + photo.fileSize,
-          };
-        });
-      },
-      onError: (taskId, error) => {
-        setUploadingFiles((prev) =>
-          prev.map((file) =>
-            file.id === taskId
-              ? { ...file, status: 'error', error }
-              : file
-          )
-        );
-
-        toast({
-          title: 'Upload failed',
-          description: error,
-          variant: 'destructive',
-        });
-      },
-      onStatusChange: (taskId, status) => {
-        setUploadingFiles((prev) =>
-          prev.map((file) =>
-            file.id === taskId
-              ? { ...file, status: status as UploadingFile['status'] }
-              : file
-          )
-        );
-      },
-      onComplete: () => {
-        setIsUploading(false);
-
-        // Get success count from upload service queue status
-        setUploadingFiles((prev) => {
-          const successCount = prev.filter((f) => f.status === 'success').length;
-          if (successCount > 0) {
-            toast({
-              title: 'Upload complete',
-              description: `Successfully uploaded ${successCount} photo${successCount > 1 ? 's' : ''}`,
-            });
-          }
-          return prev;
-        });
-      },
+          // Update album stats
+          setAlbum(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              totalPhotos: prev.totalPhotos + 1,
+              storageUsed: (prev.storageUsed || 0) + task.photo!.fileSize,
+            };
+          });
+        }
+      });
     });
 
-    return () => {
-      uploadServiceRef.current?.destroy();
-    };
-  }, []); // Remove album dependency to prevent recreation during uploads
+    return () => unsubscribe();
+  }, [albumId]);
 
   // Fetch album and photos
   useEffect(() => {
@@ -271,49 +220,20 @@ export default function AlbumDetailPage() {
     });
 
     if (validFiles.length > 0) {
-      setUploadPanelExpanded(true);
       uploadFiles(validFiles);
     }
   };
 
-  const uploadFiles = (files: File[]) => {
-    if (!uploadServiceRef.current) return;
+  const uploadFiles = async (files: File[]) => {
+    if (!album) return;
 
-    setIsUploading(true);
+    const uploadManager = getUploadManager();
+    await uploadManager.addFiles(files, albumId, album.title);
 
-    // Add files to upload service queue
-    const taskIds = uploadServiceRef.current.addToQueue(files, albumId);
-
-    // Create uploading file entries
-    const newUploadingFiles: UploadingFile[] = files.map((file, index) => ({
-      id: taskIds[index],
-      file,
-      progress: 0,
-      status: 'uploading' as const,
-    }));
-
-    setUploadingFiles((prev) => [...prev, ...newUploadingFiles]);
-
-    // Start uploads
-    uploadServiceRef.current.startUploads();
-  };
-
-  const handleCancelUpload = () => {
-    if (!uploadServiceRef.current) return;
-
-    if (confirm('Are you sure you want to cancel all uploads?')) {
-      uploadServiceRef.current.cancelAll();
-      setUploadingFiles([]);
-      setIsUploading(false);
-      toast({
-        title: 'Cancelled',
-        description: 'Upload cancelled',
-      });
-    }
-  };
-
-  const clearUploadingFiles = () => {
-    setUploadingFiles([]);
+    toast({
+      title: 'Uploading',
+      description: `Added ${files.length} file${files.length > 1 ? 's' : ''} to upload queue`,
+    });
   };
 
   // Album actions
@@ -532,191 +452,177 @@ export default function AlbumDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </AppLayout>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   // Not found state
   if (!album) {
     return (
-      <AppLayout>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold">Album not found</h2>
-          <p className="text-muted-foreground mt-2">This album may have been deleted</p>
-          <Button className="mt-4" asChild>
-            <Link href="/albums">Back to Albums</Link>
-          </Button>
-        </div>
-      </AppLayout>
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold">Album not found</h2>
+        <p className="text-muted-foreground mt-2">This album may have been deleted</p>
+        <Button className="mt-4" asChild>
+          <Link href="/albums">Back to Albums</Link>
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
-      <div
-        className="space-y-6"
+    <div
+      className="space-y-6"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Upload Drop Zone */}
+      <UploadDropZone
+        albumTitle={album.title}
+        isDragging={isDragging}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-      >
-        {/* Upload Drop Zone */}
-        <UploadDropZone
-          albumTitle={album.title}
-          isDragging={isDragging}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          fileInputRef={fileInputRef}
-          onFileSelect={handleFileSelect}
-        />
+        fileInputRef={fileInputRef}
+        onFileSelect={handleFileSelect}
+      />
 
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm">
-          <Link
-            href="/albums"
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Albums
-          </Link>
-        </div>
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm">
+        <Link
+          href="/albums"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Albums
+        </Link>
+      </div>
 
-        {/* Header */}
-        <div className="flex flex-col gap-4">
-          {selectedPhotos.size > 0 ? (
-            <SelectionHeader
-              selectedCount={selectedPhotos.size}
-              totalCount={photos.length}
-              onSelectAll={selectAllPhotos}
-              onDeselectAll={deselectAllPhotos}
-              onDelete={() => setDeleteDialogOpen(true)}
-            />
-          ) : (
-            <>
-              <div className="flex items-start justify-between">
-                <AlbumHeader
-                  album={album}
-                  photos={photos}
-                  onAddPhotos={() => fileInputRef.current?.click()}
-                  onShare={() => setShareDialogOpen(true)}
-                  onEdit={() => setEditDialogOpen(true)}
-                  onDelete={handleDeleteAlbum}
-                  onExport={handleExportSelections}
-                />
-              </div>
-              {/* <AlbumActions
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        {selectedPhotos.size > 0 ? (
+          <SelectionHeader
+            selectedCount={selectedPhotos.size}
+            totalCount={photos.length}
+            onSelectAll={selectAllPhotos}
+            onDeselectAll={deselectAllPhotos}
+            onDelete={() => setDeleteDialogOpen(true)}
+          />
+        ) : (
+          <>
+            <div className="flex items-start justify-between">
+              <AlbumHeader
+                album={album}
+                photos={photos}
+                onAddPhotos={() => fileInputRef.current?.click()}
+                onShare={() => setShareDialogOpen(true)}
+                onEdit={() => setEditDialogOpen(true)}
+                onDelete={handleDeleteAlbum}
+                onExport={handleExportSelections}
+              />
+            </div>
+            {/* <AlbumActions
                 onAddPhotos={() => fileInputRef.current?.click()}
                 onShare={() => setShareDialogOpen(true)}
                 onEdit={() => setEditDialogOpen(true)}
                 onDelete={handleDeleteAlbum}
               /> */}
-              {/* Storage Indicator */}
-              {getStorageInfo() && (
-                <StorageIndicator
-                  storageInfo={getStorageInfo()!}
-                  compact={true}
-                />
+            {/* Storage Indicator */}
+            {getStorageInfo() && (
+              <StorageIndicator
+                storageInfo={getStorageInfo()!}
+                compact={true}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedPhotos.size} photo{selectedPhotos.size > 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected photo
+              {selectedPhotos.size > 1 ? 's' : ''} from the album and remove{' '}
+              {selectedPhotos.size > 1 ? 'them' : 'it'} from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSelectedPhotos}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
               )}
-            </>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Album Dialog */}
+      {album && (
+        <EditAlbumDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          album={album}
+          onAlbumUpdated={handleAlbumUpdated}
+        />
+      )}
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        albumId={albumId}
+        albumTitle={album.title}
+      />
+
+      {/* Note: Upload progress is now shown in the global GlobalUploadPanel */}
+
+      {/* Photo Gallery */}
+      <PhotoGallery
+        photos={photos}
+        selectedPhotos={selectedPhotos}
+        hasSelection={selectedPhotos.size > 0}
+        // onPhotoClick={openImagePreview}
+        onPhotoSelect={togglePhotoSelection}
+        onSelectionToggle={handleSelectionToggle}
+        useInternalPreview={true}
+      />
+
+      {/* Infinite Scroll Sentinel */}
+      {hasMorePhotos && (
+        <div ref={sentinelRef} className="flex justify-center py-8">
+          {loadingMore && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Loading more photos...</span>
+            </div>
           )}
         </div>
+      )}
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                Delete {selectedPhotos.size} photo{selectedPhotos.size > 1 ? 's' : ''}?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the selected photo
-                {selectedPhotos.size > 1 ? 's' : ''} from the album and remove{' '}
-                {selectedPhotos.size > 1 ? 'them' : 'it'} from our servers.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                disabled={isDeleting}
-                onClick={() => setDeleteDialogOpen(false)}
-              >
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteSelectedPhotos}
-                disabled={isDeleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Edit Album Dialog */}
-        {album && (
-          <EditAlbumDialog
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            album={album}
-            onAlbumUpdated={handleAlbumUpdated}
-          />
-        )}
-
-        {/* Share Dialog */}
-        <ShareDialog
-          open={shareDialogOpen}
-          onOpenChange={setShareDialogOpen}
-          albumId={albumId}
-          albumTitle={album.title}
-        />
-
-        {/* Upload Progress Panel */}
-        <UploadProgressPanel
-          uploadingFiles={uploadingFiles}
-          isUploading={isUploading}
-          isExpanded={uploadPanelExpanded}
-          onToggleExpand={setUploadPanelExpanded}
-          onCancel={handleCancelUpload}
-          onClear={clearUploadingFiles}
-          onAddMore={() => fileInputRef.current?.click()}
-        />
-
-        {/* Photo Gallery */}
-        <PhotoGallery
-          photos={photos}
-          selectedPhotos={selectedPhotos}
-          hasSelection={selectedPhotos.size > 0}
-          // onPhotoClick={openImagePreview}
-          onPhotoSelect={togglePhotoSelection}
-          onSelectionToggle={handleSelectionToggle}
-          useInternalPreview={true}
-        />
-
-        {/* Infinite Scroll Sentinel */}
-        {hasMorePhotos && (
-          <div ref={sentinelRef} className="flex justify-center py-8">
-            {loadingMore && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-sm">Loading more photos...</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Image Preview Modal */}
-        {/* <ImagePreviewModal
+      {/* Image Preview Modal */}
+      {/* <ImagePreviewModal
           photos={photos}
           currentIndex={imagePreview.currentIndex}
           zoom={imagePreview.zoom}
@@ -729,7 +635,6 @@ export default function AlbumDetailPage() {
           onResetZoom={handleResetZoom}
           onSelectionToggle={handleSelectionToggle}
         /> */}
-      </div>
-    </AppLayout>
+    </div>
   );
 }

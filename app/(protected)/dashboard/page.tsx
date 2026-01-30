@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { AppLayout } from '@/components/layout/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, ImageIcon, Users, BarChart3, Plus, Link as LinkIcon, QrCode, Settings as SettingsIcon } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth';
@@ -42,7 +41,6 @@ export default function Home() {
 
     const quickActions = [
         { title: 'Create New Album', icon: Plus, href: '/albums/create', action: null },
-        // { title: 'Invite Client', icon: Users, href: '/clients', action: null },
         { title: 'Generate Share Link', icon: LinkIcon, href: null, action: () => setShareDialogOpen(true) },
         { title: 'Generate QR Code', icon: QrCode, href: null, action: () => setQrCodeDialogOpen(true) },
         { title: 'View Analytics', icon: BarChart3, href: '/analytics', action: null },
@@ -50,7 +48,7 @@ export default function Home() {
     ];
 
     return (
-        <AppLayout>
+        <>
             <div className="space-y-6">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
@@ -181,6 +179,7 @@ export default function Home() {
 
             {/* Album Selection Dialog for QR Code */}
             <AlbumSelectionDialog open={qrCodeDialogOpen} onOpenChange={setQrCodeDialogOpen} initialShowQR={true} />
-        </AppLayout>
+        </>
     );
 }
+

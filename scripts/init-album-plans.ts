@@ -9,7 +9,7 @@
 import mongoose from 'mongoose';
 import { AlbumPlanService } from '../lib/services/album-plan.service';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shotsspace';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://darshanx:Darshan100@cluster0.cqwfiut.mongodb.net/?appName=Cluster0';
 
 async function initializePlans() {
   try {

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AppLayout } from '@/components/layout/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -84,25 +83,21 @@ export default function ClientDetailPage() {
 
     if (loading) {
         return (
-            <AppLayout>
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-            </AppLayout>
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
         );
     }
 
     if (!client) {
         return (
-            <AppLayout>
-                <div className="text-center py-12">
-                    <h2 className="text-2xl font-bold mb-4">Client not found</h2>
-                    <Button onClick={() => router.push('/clients')}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Clients
-                    </Button>
-                </div>
-            </AppLayout>
+            <div className="text-center py-12">
+                <h2 className="text-2xl font-bold mb-4">Client not found</h2>
+                <Button onClick={() => router.push('/clients')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Clients
+                </Button>
+            </div>
         );
     }
 
@@ -111,7 +106,7 @@ export default function ClientDetailPage() {
     const isActive = events.length > 0 || albums.length > 0;
 
     return (
-        <AppLayout>
+        <>
             <div className="space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
@@ -322,6 +317,6 @@ export default function ClientDetailPage() {
                 client={client}
                 onSave={handleUpdateClient}
             />
-        </AppLayout>
+        </>
     );
 }

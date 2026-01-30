@@ -1,4 +1,3 @@
-import { AppLayout } from '@/components/layout/app-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +44,7 @@ export default function FavoritesPage() {
   ];
 
   return (
-    <AppLayout>
+    <div className="space-y-6">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -119,6 +118,6 @@ export default function FavoritesPage() {
           </Card>
         )}
       </div>
-    </AppLayout>
+    </div>
   );
 }

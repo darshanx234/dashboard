@@ -13,6 +13,7 @@ export interface IUser extends Document {
   bio?: string;
   userType: 'photographer' | 'studio_owner'; // Type of user
   role: 'photographer' | 'client' | 'admin'; // Permission role
+  status: 'active' | 'suspended' | 'banned'; // Account status
   isVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -38,7 +39,7 @@ const userSchema = new Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false,
     validate: {
-      validator: function(v: string) {
+      validator: function (v: string) {
         // Only validate if password is provided
         if (!v) return true;
         return v.length >= 6;
@@ -71,6 +72,11 @@ const userSchema = new Schema({
     type: String,
     enum: ['photographer', 'client', 'admin'],
     default: 'photographer',
+  },
+  status: {
+    type: String,
+    enum: ['active', 'suspended', 'banned'],
+    default: 'active',
   },
   isVerified: {
     type: Boolean,

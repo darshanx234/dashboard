@@ -97,32 +97,19 @@ export function AlbumSelectionDialog({ open, onOpenChange, initialShowQR = false
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-        {/* Show back button when an album is selected */}
-        {selectedAlbum && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="absolute left-4 top-4 z-10"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Albums
-          </Button>
-        )}
-
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0">
         {!selectedAlbum ? (
           <>
-            <DialogHeader>
+            <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
               <DialogTitle>Select Album to Share</DialogTitle>
               <DialogDescription>
                 Choose an album to generate a share link or invite people
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-hidden flex flex-col px-6 pb-6">
               {/* Search Bar */}
-              <div className="relative flex-shrink-0">
+              <div className="relative flex-shrink-0 mb-4">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search albums by title, description, or location..."
@@ -133,7 +120,7 @@ export function AlbumSelectionDialog({ open, onOpenChange, initialShowQR = false
               </div>
 
               {/* Albums List */}
-              <ScrollArea className="flex-1 pr-4">
+              <ScrollArea className="flex-1 -mr-3 pr-3">
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -176,8 +163,8 @@ export function AlbumSelectionDialog({ open, onOpenChange, initialShowQR = false
                                     album.status === 'published'
                                       ? 'default'
                                       : album.status === 'draft'
-                                      ? 'secondary'
-                                      : 'outline'
+                                        ? 'secondary'
+                                        : 'outline'
                                   }
                                 >
                                   {album.status}
@@ -228,13 +215,34 @@ export function AlbumSelectionDialog({ open, onOpenChange, initialShowQR = false
             </div>
           </>
         ) : (
-          <div className="pt-12 overflow-y-auto flex-1">
-            <ShareContent 
-              albumId={selectedAlbum._id} 
-              albumTitle={selectedAlbum.title}
-              initialShowQR={initialShowQR}
-            />
-          </div>
+          <>
+            <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleBack}
+                  className="h-8 w-8"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <DialogTitle>Share Album</DialogTitle>
+                  <DialogDescription className="mt-1">
+                    {selectedAlbum.title}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <ScrollArea className="flex-1 px-6 py-4 overflow-auto">
+              <ShareContent
+                albumId={selectedAlbum._id}
+                albumTitle={selectedAlbum.title}
+                initialShowQR={initialShowQR}
+              />
+            </ScrollArea>
+          </>
         )}
       </DialogContent>
     </Dialog>
